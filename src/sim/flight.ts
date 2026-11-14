@@ -52,6 +52,8 @@ export interface FlightStats {
   dvUsed: number;
   propBurnedOnPad: number;
   orbitT: number | null;
+  /** Momento en que se cumplieron todos los objetivos de la misión, o null. */
+  doneT: number | null;
   /** Estado en el momento de la falla, para el informe. */
   failAlt: number;
   failSpeed: number;
@@ -135,7 +137,7 @@ export function createFlight(design: Design): Flight {
     events: [],
     stats: {
       liftoffT: null, maxAlt: 0, maxSpeed: 0, maxQ: 0, maxQAlt: 0, maxLoad: 0, maxG: 0, maxFlux: 0,
-      gravLoss: 0, dragLoss: 0, dvUsed: 0, propBurnedOnPad: 0, orbitT: null,
+      gravLoss: 0, dragLoss: 0, dvUsed: 0, propBurnedOnPad: 0, orbitT: null, doneT: null,
       failAlt: 0, failSpeed: 0, failAoa: 0, failValue: 0, burnoutSpeed: null, burnoutAlt: 0,
     },
     flags: {},
@@ -276,13 +278,15 @@ export function setThrottle(f: Flight, x: number) {
 /** Barra espaciadora: enciende en la plataforma o separa la etapa activa. */
 export function stageAction(f: Flight) {
   if (f.ended) return;
-  if (f.landed && f.stats.liftoffT === null && f.throttle === 0 && f.stageIdx === 0) {
-    f.throttle = 1;
-    log(f, 'Encendido de motores.');
-    return;
-  }
   if (payloadOnly(f)) return;
   const st = f.stages[f.stageIdx];
+  // En la plataforma la barra nunca separa una etapa que todavía tiene propelente:
+  // enciende, o lleva a plena potencia si el jugador ya había subido el acelerador.
+  if (f.landed && f.stats.liftoffT === null && f.stageIdx === 0 && st.prop > 0) {
+    if (f.throttle === 0) log(f, 'Encendido de motores.');
+    f.throttle = 1;
+    return;
+  }
   if (!f.landed) {
     const rm = Math.hypot(f.r.x, f.r.y);
     const back = 1.5;
@@ -315,6 +319,13 @@ export function deploy(f: Flight) {
   log(f, 'Paneles y antena desplegados.', 'ok');
 }
 
+/** Recoge paneles y antena, por ejemplo antes de volver a entrar a la atmósfera. */
+export function retract(f: Flight) {
+  if (!f.deployed || f.ended) return;
+  f.deployed = false;
+  log(f, 'Paneles y antena recogidos.', 'info');
+}
+
 export function storageUsed(f: Flight): number {
   return f.measurements.reduce((a, m) => a + (m.sent >= m.mb ? 0 : m.mb), 0);
 }
@@ -336,11 +347,21 @@ export function measure(f: Flight, inst: InstrumentId): string | null {
   const m: Measurement = {
     id: f.nextId++, instrument: inst, context: ctx, t: f.t, alt,
     reading: reading(inst, alt, Math.hypot(f.r.x, f.r.y), f.now.sunlit),
-    mb: spec.mb, sent: 0, points,
+    // Con la nave ya en tierra, la medición se entrega en mano.
+    mb: spec.mb, sent: f.ended === 'aterrizaje' ? spec.mb : 0, points,
   };
   f.measurements.push(m);
   log(f, `${spec.nombre} en ${CONTEXTS[ctx].toLowerCase()}: ${m.reading}`, 'ok');
   return null;
+}
+
+/** Al aterrizar, los datos que seguían a bordo se recuperan con la nave. */
+function recoverData(f: Flight) {
+  let mb = 0;
+  for (const m of f.measurements) {
+    if (m.sent < m.mb) { mb += m.mb - m.sent; m.sent = m.mb; }
+  }
+  if (mb > 0) log(f, `Nave recuperada: ${mb.toFixed(1)} MB de datos entregados en mano.`, 'ok');
 }
 
 /** Razón por la que no se puede transmitir ahora, o null si el enlace está listo. */
@@ -348,6 +369,7 @@ export function transmitBlocker(f: Flight): string | null {
   const ant = ANTENNAS[f.design.antenna];
   if (ant.rate <= 0) return 'La nave no lleva antena.';
   if (f.fairingOn) return 'La cofia cubre la antena.';
+  if (!f.landed && f.panelsLost) return 'La antena se perdió: el aire la arrancó.';
   if (!f.landed && !f.deployed) return 'Despliega la antena primero.';
   if (f.battery <= 0) return 'Sin batería.';
   if (!f.now.link) return 'Sin línea de vista a una estación terrestre.';
@@ -616,6 +638,7 @@ export function stepFlight(f: Flight, dt: number, rot = 0) {
         f.ended = 'aterrizaje';
         s.failSpeed = impact;
         log(f, `Aterrizaje a ${impact.toFixed(1)} m/s.`, 'ok');
+        recoverData(f);
       } else {
         fail('impacto', impact, `Impacto contra la superficie a ${Math.round(impact)} m/s.`);
       }
@@ -667,10 +690,11 @@ export function stepFlight(f: Flight, dt: number, rot = 0) {
       const ant = ANTENNAS[d.antenna];
       use += ant.power;
       let budget = ant.rate * dt;
-      for (const m of f.measurements) {
+      // Primero lo que menos falta: una foto grande no bloquea las lecturas pequeñas.
+      const queue = f.measurements.filter((m) => m.sent < m.mb).sort((a, b) => (a.mb - a.sent) - (b.mb - b.sent));
+      for (const m of queue) {
         if (budget <= 0) break;
         const left = m.mb - m.sent;
-        if (left <= 0) continue;
         const sent = Math.min(left, budget);
         m.sent += sent;
         budget -= sent;
