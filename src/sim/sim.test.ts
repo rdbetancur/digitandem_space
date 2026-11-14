@@ -2,8 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { G0, MU, RE } from './constants';
 import { PRESETS, cloneDesign, computeStats } from './vehicle';
 import {
-  Flight, altitude, createFlight, measure, orbitOf, recommendedDt, stageAction, stepFlight, timeToApsides,
+  Flight, altitude, createFlight, deploy, measure, orbitOf, recommendedDt, retract, scienceTotals, setThrottle,
+  stageAction, stepFlight, timeToApsides,
 } from './flight';
+import { MISSIONS, objectivesDone } from './missions';
+
+/** Coloca la carga útil sola en una órbita circular, lista para operar. */
+function inOrbit(f: Flight, alt = 300e3) {
+  const r = RE + alt;
+  f.landed = false;
+  f.stats.liftoffT = 0;
+  f.stageIdx = f.stages.length;
+  f.fairingOn = false;
+  f.r = { x: 0, y: r };
+  f.v = { x: Math.sqrt(MU / r), y: 0 };
+}
 
 function fly(f: Flight, seconds: number, until?: (f: Flight) => boolean) {
   const end = f.t + seconds;
@@ -97,6 +110,60 @@ describe('vuelo', () => {
     console.log('sondeo', { ended: f.ended, maxAlt: Math.round(f.stats.maxAlt / 1000), maxG: f.stats.maxG.toFixed(1), flux: Math.round(f.stats.maxFlux) });
     expect(f.stats.maxAlt).toBeGreaterThan(100e3);
     expect(f.ended).toBe('aterrizaje');
+    // Los datos que volvieron a bordo cuentan como entregados.
+    const sci = scienceTotals(f);
+    expect(sci.obtenida).toBeGreaterThan(0);
+    expect(sci.entregada).toBeCloseTo(sci.obtenida, 6);
+  });
+
+  it('la barra espaciadora en la plataforma nunca suelta la primera etapa', () => {
+    const f = createFlight(PRESETS.pequeno);
+    setThrottle(f, 0.3);
+    stageAction(f);
+    expect(f.stageIdx).toBe(0);
+    expect(f.throttle).toBe(1);
+    stageAction(f);
+    expect(f.stageIdx).toBe(0);
+  });
+});
+
+describe('operación', () => {
+  it('los paneles se pueden recoger y volver a desplegar', () => {
+    const f = createFlight(PRESETS.pequeno);
+    inOrbit(f);
+    stepFlight(f, 0.5);
+    deploy(f);
+    expect(f.deployed).toBe(true);
+    retract(f);
+    expect(f.deployed).toBe(false);
+    deploy(f);
+    expect(f.deployed).toBe(true);
+  });
+
+  it('una lectura pequeña se transmite antes que una foto grande', () => {
+    const f = createFlight(PRESETS.pequeno);
+    inOrbit(f);
+    stepFlight(f, 0.5);
+    deploy(f);
+    expect(measure(f, 'camara')).toBeNull();
+    expect(measure(f, 'termo')).toBeNull();
+    f.transmitting = true;
+    fly(f, 60);
+    const [foto, lectura] = f.measurements;
+    expect(lectura.sent).toBeCloseTo(lectura.mb, 6);
+    expect(foto.sent).toBeLessThan(foto.mb);
+  });
+
+  it('un objetivo cumplido no se pierde si la nave deja la órbita', () => {
+    const f = createFlight(PRESETS.pequeno);
+    const m = MISSIONS.cubesat;
+    inOrbit(f);
+    stepFlight(f, 0.5);
+    const i = m.objetivos.findIndex((o) => o.id === 'orbita');
+    expect(objectivesDone(m, f)[i]).toBe(true);
+    f.v = { x: 0, y: 0 };
+    expect(m.objetivos[i].check(f)).toBe(false);
+    expect(objectivesDone(m, f)[i]).toBe(true);
   });
 
   it('volar de lado a alta presión dinámica rompe la estructura', () => {

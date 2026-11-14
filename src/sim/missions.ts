@@ -84,6 +84,16 @@ export const MISSIONS: Record<string, Mission> = {
   },
 };
 
+/**
+ * Estado de cada objetivo. Un objetivo cumplido queda registrado en el vuelo: no se
+ * pierde si después la nave deja la órbita o recoge los paneles.
+ */
 export function objectivesDone(m: Mission, f: Flight): boolean[] {
-  return m.objetivos.map((o) => o.check(f));
+  const done = m.objetivos.map((o) => {
+    const key = `obj:${o.id}`;
+    if (!f.flags[key] && o.check(f)) f.flags[key] = true;
+    return !!f.flags[key];
+  });
+  if (done.length > 0 && f.stats.doneT === null && done.every(Boolean)) f.stats.doneT = f.t;
+  return done;
 }

@@ -176,7 +176,7 @@ export function buildReport(f: Flight, mission: Mission): Report {
 
   let puntaje = sci.entregada * 10 + sci.obtenida * 3;
   if (mission.objetivos.length) puntaje += done.filter(Boolean).length * 100;
-  if (allDone) puntaje += 200 + Math.max(0, 600 - f.t / 6) + (mission.presupuesto ? Math.max(0, (mission.presupuesto - vs.cost) * 20) : 0);
+  if (allDone) puntaje += 200 + Math.max(0, 600 - (s.doneT ?? f.t) / 6) + (mission.presupuesto ? Math.max(0, (mission.presupuesto - vs.cost) * 20) : 0);
 
   const resumen = allDone
     ? 'Cumpliste todos los objetivos. Estas fueron las decisiones que lo hicieron posible.'

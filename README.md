@@ -42,7 +42,8 @@ npm run build    # versión de producción en dist/
 | P | Piloto automático de ascenso |
 | , / . | Aceleración temporal |
 | M · rueda | Mapa orbital · zoom |
-| G | Desplegar paneles y antena |
+| G | Desplegar · recoger paneles y antena |
+| Esc | Pausa |
 | C · 1–4 | Panel de ciencia · usar instrumento |
 
 ## Estructura

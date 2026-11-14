@@ -3,7 +3,7 @@ import { ATM_TOP, RE } from '../sim/constants';
 import { ANTENNAS, CORES, INSTRUMENTS, InstrumentId, MATERIALS } from '../sim/catalog';
 import {
   Flight as FlightState, Sas, altitude, canDeploy, createFlight, currentMass, deploy, endFlight, groundVelocity,
-  linkStatus, maxWarp, measure, orbitOf, payloadOnly, pitchOf, recommendedDt, remainingDv, scienceTotals,
+  linkStatus, maxWarp, measure, orbitOf, payloadOnly, pitchOf, recommendedDt, remainingDv, retract, scienceTotals,
   setThrottle, stageAction, stepFlight, storageUsed, timeToApsides, transmitBlocker,
 } from '../sim/flight';
 import { Mission, objectivesDone } from '../sim/missions';
@@ -90,7 +90,16 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
   const [help, setHelp] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [sciOpen, setSciOpen] = useState(false);
+  const pausedRef = useRef(false);
+  const [paused, setPaused] = useState(false);
   const mat = MATERIALS[design.material];
+  const togglePause = () => { pausedRef.current = !pausedRef.current; setPaused(pausedRef.current); };
+  const toggleDeploy = () => {
+    const f = flightRef.current;
+    if (f.deployed) retract(f);
+    else if (canDeploy(f)) deploy(f);
+    else say(f.panelsLost ? 'Los paneles y la antena se perdieron.' : 'Solo se puede desplegar en vuelo, sin cofia, sin empuje y fuera del aire denso.');
+  };
 
   const say = (msg: string | null) => {
     if (!msg) return;
@@ -134,6 +143,8 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       if (e.repeat) return;
       keys.current.add(k);
       const f = flightRef.current;
+      if (k === 'Escape') { togglePause(); return; }
+      if (pausedRef.current) return;
       if (k === ' ') { f.autopilot = false; stageAction(f); setHelp(false); }
       else if (k === 'z') { f.autopilot = false; setThrottle(f, 1); }
       else if (k === 'x') { f.autopilot = false; setThrottle(f, 0); }
@@ -142,15 +153,18 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       else if (k === '.') stepWarp(1);
       else if (k === ',') stepWarp(-1);
       else if (k === 'p') { f.autopilot = !f.autopilot; if (f.autopilot) setHelp(false); }
-      else if (k === 'g') { if (canDeploy(f)) deploy(f); else say('Solo se puede desplegar en vuelo, sin cofia, sin empuje y fuera del aire denso.'); }
+      else if (k === 'g') toggleDeploy();
       else if (k === 'h') setHelp((v) => !v);
       else if (k === 'c') setSciOpen((v) => !v);
       else if (/^[1-4]$/.test(k)) { const i = f.design.instruments[Number(k) - 1]; if (i) doMeasure(i); }
     };
     const up = (e: KeyboardEvent) => { keys.current.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key); };
+    // Si la ventana pierde el foco no llega el keyup: se sueltan todas las teclas.
+    const blur = () => keys.current.clear();
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
+    window.addEventListener('blur', blur);
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -189,7 +203,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       }
       const f = flightRef.current;
       const k = keys.current;
-      if (!f.ended) {
+      if (!f.ended && !pausedRef.current) {
         // Entradas continuas
         const up = k.has('w') || k.has('ArrowUp') || k.has('Shift');
         const dn = k.has('s') || k.has('ArrowDown') || k.has('Control');
@@ -200,13 +214,19 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         if (rot !== 0) f.autopilot = false;
         if (warpRef.current > maxWarp(f)) warpRef.current = maxWarp(f);
         const warp = warpRef.current;
-        const simT = real * warp;
-        const dtMax = recommendedDt(f);
-        const steps = Math.min(6000, Math.max(1, Math.ceil(simT / dtMax)));
-        const dt = simT / steps;
-        for (let i = 0; i < steps && !f.ended; i++) {
-          stepFlight(f, dt, rot / warp);
-          if (warp > maxWarp(f)) { warpRef.current = maxWarp(f); break; }
+        // El reloj de la misión no corre en la plataforma hasta que el jugador enciende.
+        const waiting = f.landed && f.stats.liftoffT === null && f.throttle === 0 && !f.autopilot;
+        const simT = waiting ? 0 : real * warp;
+        if (!waiting) {
+          const dtMax = recommendedDt(f);
+          const steps = Math.min(6000, Math.max(1, Math.ceil(simT / dtMax)));
+          const dt = simT / steps;
+          for (let i = 0; i < steps && !f.ended; i++) {
+            stepFlight(f, dt, rot / warp);
+            if (warp > maxWarp(f)) { warpRef.current = maxWarp(f); break; }
+          }
+          // Registra los objetivos en cada cuadro: con aceleración temporal alta el tablero se refresca poco.
+          objectivesDone(mission, f);
         }
         for (const p of particles.current) {
           p.x += p.vx * simT; p.y += p.vy * simT; p.life -= real;
@@ -275,6 +295,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         </div>
         <div className="chip">{hud.context}</div>
         <button className="btn tiny" onClick={toggleMap} title="Tecla M">{mapMode.current ? 'Vista nave' : 'Mapa'}</button>
+        <button className={`btn tiny ${paused ? 'on' : ''}`} onClick={togglePause} title="Tecla Esc">{paused ? 'Continuar' : 'Pausa'}</button>
         <button className="btn tiny" onClick={() => setHelp((v) => !v)} title="Tecla H">Controles</button>
         <button className="btn warn" onClick={finish}>Terminar vuelo</button>
       </div>
@@ -338,7 +359,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         <Row k="Enlace" v={hud.link ? `con estación · ${n((hud.delay ?? 0) * 1000, 1)} ms` : 'sin línea de vista'} tone={hud.link ? 'ok' : 'bad'} />
         <Row k="Ciencia" v={`${n(hud.sciE, 1)} entregada / ${n(hud.sciO, 1)}`} />
         <div className="seg">
-          <button className="btn tiny" disabled={!hud.canDeploy} onClick={() => deploy(f)} title="Tecla G">{hud.deployed ? 'Desplegado' : 'Desplegar'}</button>
+          <button className={`btn tiny ${hud.deployed ? 'on' : ''}`} disabled={!hud.deployed && !hud.canDeploy} onClick={toggleDeploy} title="Tecla G">{hud.deployed ? 'Recoger' : 'Desplegar'}</button>
           <button className={`btn tiny ${hud.transmitting ? 'on' : ''}`} onClick={toggleTx} disabled={ANTENNAS[design.antenna].rate === 0}>
             {hud.transmitting ? (hud.txBlock ? 'Esperando enlace…' : 'Transmitiendo') : 'Transmitir'}
           </button>
@@ -377,7 +398,11 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
 
       {toast && <div className="hud toast">{toast}</div>}
 
-      {!hud.launched && !hud.ended && !help && (
+      {paused && !hud.ended && (
+        <div className="hud prompt">En pausa · pulsa <span className="keycap">Esc</span> para continuar</div>
+      )}
+
+      {!paused && !hud.launched && !hud.ended && !help && (
         <div className="hud prompt">Pulsa <span className="keycap">Espacio</span> para encender motores</div>
       )}
 
@@ -393,7 +418,8 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
             <span className="keycap">P</span><span>Piloto automático de ascenso</span>
             <span className="keycap">, / .</span><span>Aceleración temporal</span>
             <span className="keycap">M</span><span>Mapa orbital · la rueda del ratón hace zoom</span>
-            <span className="keycap">G</span><span>Desplegar paneles y antena</span>
+            <span className="keycap">G</span><span>Desplegar · recoger paneles y antena</span>
+            <span className="keycap">Esc</span><span>Pausa</span>
             <span className="keycap">C · 1–4</span><span>Panel de ciencia · usar instrumento</span>
           </div>
           <p className="muted">Para llegar a órbita: sube vertical unos segundos, inclina poco a poco hacia el este y gana velocidad horizontal. Cuando el apoapsis pase de 150 km, corta el motor, espera a llegar arriba y vuelve a acelerar en prograda.</p>
