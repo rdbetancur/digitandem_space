@@ -1,0 +1,110 @@
+import { describe, expect, it } from 'vitest';
+import { G0, MU, RE } from './constants';
+import { PRESETS, cloneDesign, computeStats } from './vehicle';
+import {
+  Flight, altitude, createFlight, measure, orbitOf, recommendedDt, stageAction, stepFlight, timeToApsides,
+} from './flight';
+
+function fly(f: Flight, seconds: number, until?: (f: Flight) => boolean) {
+  const end = f.t + seconds;
+  while (f.t < end && !f.ended) {
+    stepFlight(f, recommendedDt(f));
+    if (until && until(f)) break;
+  }
+}
+
+describe('vehículo', () => {
+  it('la ecuación del cohete da el delta-v esperado', () => {
+    const s = computeStats(PRESETS.pequeno);
+    const st = s.stages[1];
+    expect(st.dvVac).toBeCloseTo(343 * G0 * Math.log(st.m0 / st.m1), 6);
+    // Un lanzador orbital pequeño necesita unos 9,4 km/s contando pérdidas.
+    expect(s.dvVacTotal).toBeGreaterThan(9400);
+  });
+});
+
+describe('órbitas', () => {
+  it('una órbita circular a 200 km tiene el periodo real (~88,5 min)', () => {
+    const r = RE + 200e3;
+    const v = Math.sqrt(MU / r);
+    const o = orbitOf({ x: 0, y: r }, { x: v, y: 0 });
+    expect(o.e).toBeLessThan(1e-9);
+    expect(o.period / 60).toBeCloseTo(88.5, 0);
+  });
+
+  it('el integrador conserva una órbita circular durante veinte vueltas', () => {
+    const f = createFlight(PRESETS.pequeno);
+    const r = RE + 300e3;
+    f.landed = false;
+    f.stats.liftoffT = 0;
+    f.stageIdx = f.stages.length;
+    f.fairingOn = false;
+    f.r = { x: 0, y: r };
+    f.v = { x: Math.sqrt(MU / r), y: 0 };
+    fly(f, 5400 * 20);
+    const o = orbitOf(f.r, f.v);
+    expect(Math.abs(altitude(f) - 300e3)).toBeLessThan(500);
+    expect(o.e).toBeLessThan(1e-4);
+  });
+
+  it('el tiempo al apoapsis es medio periodo desde el periapsis', () => {
+    const r = RE + 200e3;
+    const v = Math.sqrt(MU / r) * 1.05;
+    const o = orbitOf({ x: 0, y: r }, { x: v, y: 0 });
+    const t = timeToApsides({ x: 0, y: r }, { x: v, y: 0 }, o);
+    expect(t.toAp).toBeCloseTo(o.period / 2, 0);
+  });
+});
+
+describe('vuelo', () => {
+  it('un cohete con empuje menor que su peso no despega', () => {
+    const d = cloneDesign(PRESETS.pequeno);
+    d.stages[0].engines = 4;
+    const f = createFlight(d);
+    stageAction(f);
+    fly(f, 20);
+    expect(f.landed).toBe(true);
+    expect(f.stats.liftoffT).toBeNull();
+    expect(f.stats.propBurnedOnPad).toBeGreaterThan(0);
+  });
+
+  for (const key of ['pequeno', 'mediano'] as const) {
+    it(`el piloto automático lleva "${key}" a órbita sin fallas`, () => {
+      const f = createFlight(PRESETS[key]);
+      f.autopilot = true;
+      fly(f, 1500, (x) => !x.autopilot);
+      const o = orbitOf(f.r, f.v);
+      const s = f.stats;
+      console.log(key, {
+        t: Math.round(f.t), ended: f.ended, pe: Math.round((o.pe - RE) / 1000), ap: Math.round((o.ap - RE) / 1000),
+        maxQ: Math.round(s.maxQ), maxLoad: Math.round(s.maxLoad), maxG: s.maxG.toFixed(1),
+        grav: Math.round(s.gravLoss), drag: Math.round(s.dragLoss), dv: Math.round(s.dvUsed),
+        left: f.stages.map((x) => Math.round(x.prop)),
+      });
+      expect(f.ended).toBeNull();
+      expect(o.pe - RE).toBeGreaterThan(140e3);
+    });
+  }
+
+  it('el cohete de sondeo sube al espacio, mide y vuelve con paracaídas', () => {
+    const f = createFlight(PRESETS.sondeo);
+    stageAction(f);
+    fly(f, 400, (x) => altitude(x) > 30e3);
+    expect(measure(f, 'termo')).toBeNull();
+    fly(f, 2000, (x) => x.stages[0].prop <= 0);
+    stageAction(f);
+    fly(f, 4000);
+    console.log('sondeo', { ended: f.ended, maxAlt: Math.round(f.stats.maxAlt / 1000), maxG: f.stats.maxG.toFixed(1), flux: Math.round(f.stats.maxFlux) });
+    expect(f.stats.maxAlt).toBeGreaterThan(100e3);
+    expect(f.ended).toBe('aterrizaje');
+  });
+
+  it('volar de lado a alta presión dinámica rompe la estructura', () => {
+    const f = createFlight(PRESETS.pequeno);
+    stageAction(f);
+    fly(f, 200, (x) => x.now.q > 20e3);
+    f.heading -= Math.PI / 2;
+    fly(f, 10);
+    expect(f.ended).toBe('estructura');
+  });
+});
