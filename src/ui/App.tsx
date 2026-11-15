@@ -3,12 +3,13 @@ import { Flight as FlightState } from '../sim/flight';
 import { MISSIONS } from '../sim/missions';
 import { Report as ReportData, buildReport } from '../sim/report';
 import { Design, cloneDesign } from '../sim/vehicle';
+import Atlas from './Atlas';
 import Flight from './Flight';
 import Home from './Home';
 import Lab from './Lab';
 import Report from './Report';
 
-type Screen = 'home' | 'lab' | 'flight' | 'report';
+type Screen = 'home' | 'lab' | 'flight' | 'report' | 'atlas';
 
 const DESIGN_KEY = 'ascenso.diseno.v1';
 const LOG_KEY = 'ascenso.bitacora.v1';
@@ -66,5 +67,9 @@ export default function App() {
   if (screen === 'report' && report) {
     return <Report report={report} onRetry={launch} onLab={() => setScreen('lab')} onHome={() => setScreen('home')} />;
   }
-  return <Home logbook={logbook} onStart={start} onClearLog={() => setLogbook([])} />;
+  if (screen === 'atlas') {
+    // El Atlas compara los destinos con la nave del juego libre.
+    return <Atlas design={designs.sandbox ?? MISSIONS.sandbox.preset} onHome={() => setScreen('home')} onLab={() => start('sandbox')} />;
+  }
+  return <Home logbook={logbook} onStart={start} onAtlas={() => setScreen('atlas')} onClearLog={() => setLogbook([])} />;
 }
