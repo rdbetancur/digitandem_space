@@ -318,3 +318,11 @@ select, input[type='text'], input:not([type]) {
 .atlas-photo img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 9px; border: 1px solid var(--line); background: #05080f; }
 .atlas-photo figcaption { color: var(--muted); font-size: 11px; line-height: 1.4; margin-top: 5px; }
 .atlas-photo figcaption span { display: block; opacity: 0.8; }
+
+/* ---------- Atlas: trip planner ---------- */
+.atlas-trip { top: 132px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100% - 24px); padding: 7px 8px 7px 14px; border-radius: 999px; background: rgba(40, 26, 8, 0.92); border: 1px solid rgba(255, 179, 71, 0.6); color: #ffd9a0; font-size: 13px; font-weight: 600; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5); }
+.atlas-side h4 { margin-top: 16px; }
+.atlas-side .kv b.ok { color: var(--ok); }
+.atlas-side .kv b.bad { color: var(--bad); }
+.atlas-side .btn.primary.wide { margin: 8px 0 2px; }
+.atlas-photo img { aspect-ratio: auto; height: 170px; object-fit: contain; background: #000; }
