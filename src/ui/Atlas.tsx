@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AU, BODIES, BODY, BodyId, P2, distance, lightTime, orbitPoint, position, solarFactor, trip } from '../sim/atlas';
+import { Journey, journeyPoint, outlook, planJourney } from '../sim/atlasPlan';
 import { Design, computeStats } from '../sim/vehicle';
 import { BODY_IMAGES, bodyImageUrl } from './nasaLive';
 
@@ -26,6 +27,11 @@ function duration(s: number): string {
   return `${n(d / 365.25, 1)} years`;
 }
 
+/** Generador determinista: el cielo y el cinturón son iguales en cada visita. */
+const rnd = (i: number, k: number) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
+const STARS = Array.from({ length: 240 }, (_, i) => ({ x: rnd(i, 1), y: rnd(i, 2), s: 0.6 + rnd(i, 3) * 1.1, a: (0.15 + rnd(i, 4) * 0.5).toFixed(2) }));
+const BELT = Array.from({ length: 520 }, (_, i) => ({ r: 2.15 + rnd(i, 5) * 1.15, a0: rnd(i, 6) * 2 * Math.PI }));
+
 /** Duración de una rotación sobre su eje (NASA Planetary Fact Sheet). */
 const ROTATION: Record<BodyId, string> = {
   sol: 'about 25 days at its equator', mercurio: '58.6 days', venus: '243 days, spinning backwards', tierra: '23.9 hours',
@@ -49,25 +55,43 @@ export default function Atlas({ design, onHome, onLab }: Props) {
   const dateRef = useRef(Date.now());
   const speedRef = useRef(0);
   // focus: cuerpo al que la cámara vuela y sigue. home: la cámara vuelve a la vista general.
-  const view = useRef({ zoom: 0, panX: 0, panY: 0, focus: null as BodyId | null, home: false });
+  // homeR: radio (UA) que debe caber en la vista general; 30,1 es todo el sistema.
+  const view = useRef({ zoom: 0, panX: 0, panY: 0, focus: null as BodyId | null, home: false, homeR: 30.1 });
   const visualRef = useRef(true);
   const selRef = useRef<BodyId>('marte');
+  // Viaje en curso: from es la fecha en que se pidió, para acelerar la espera hasta la ventana.
+  const tripRef = useRef<{ j: Journey; from: number; arrived: boolean } | null>(null);
+  const [tripInfo, setTripInfo] = useState<string | null>(null);
   const [date, setDate] = useState(dateRef.current);
   const [speed, setSpeed] = useState(0);
   const [visual, setVisual] = useState(true);
   const [sel, setSel] = useState<BodyId>('marte');
   const stats = useMemo(() => computeStats(design), [design]);
 
+  const clearTrip = () => { tripRef.current = null; setTripInfo(null); };
   const pick = (id: BodyId) => {
+    if (id !== selRef.current) clearTrip();
     selRef.current = id; setSel(id);
     // Elegir el Sol devuelve a la vista general; cualquier otro cuerpo acerca la cámara a él.
     view.current.focus = id === 'sol' ? null : id;
     view.current.home = id === 'sol';
+    view.current.homeR = 30.1;
   };
-  const overview = () => { view.current.focus = null; view.current.home = true; };
-  const setScale = (v: boolean) => { visualRef.current = v; view.current = { zoom: 0, panX: 0, panY: 0, focus: null, home: false }; setVisual(v); };
-  const setRate = (i: number) => { speedRef.current = SPEEDS[i].days; setSpeed(i); setDate(dateRef.current); };
-  const today = () => { dateRef.current = Date.now(); setDate(dateRef.current); };
+  const overview = () => { view.current.focus = null; view.current.home = true; view.current.homeR = 30.1; };
+  const setScale = (v: boolean) => { visualRef.current = v; view.current = { zoom: 0, panX: 0, panY: 0, focus: null, home: false, homeR: 30.1 }; setVisual(v); };
+  const setRate = (i: number) => { clearTrip(); speedRef.current = SPEEDS[i].days; setSpeed(i); setDate(dateRef.current); };
+  const today = () => { clearTrip(); dateRef.current = Date.now(); setDate(dateRef.current); };
+  /** Sale en la próxima ventana: el tiempo corre solo hasta la salida y luego durante el viaje. */
+  const launchTrip = () => {
+    const j = planJourney(selRef.current, dateRef.current);
+    if (!j) return;
+    tripRef.current = { j, from: dateRef.current, arrived: false };
+    speedRef.current = 0; setSpeed(0);
+    if (j.id === 'luna') { view.current.focus = 'luna'; view.current.home = false; return; }
+    // Encuadra las dos órbitas del viaje: la de la Tierra y la del destino.
+    view.current.focus = null; view.current.home = true;
+    view.current.homeR = Math.max(1.15, BODY[j.id].el!.a * 1.15);
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -124,7 +148,7 @@ export default function Atlas({ design, onHome, onLab }: Props) {
       const v = view.current;
       if (!v.focus && !v.home) return;
       const base = fit();
-      let target = base;
+      let target = (area().r * 0.94) / (visualRef.current ? Math.pow(v.homeR, 0.45) : v.homeR);
       if (v.focus) {
         const near = v.focus === 'luna' || v.focus === 'tierra';
         target = base * (visualRef.current ? (v.focus === 'luna' ? 12 : 9) : near ? 2500 : 12);
@@ -146,6 +170,21 @@ export default function Atlas({ design, onHome, onLab }: Props) {
       if (view.current.zoom === 0) view.current.zoom = fit();
       ctx.fillStyle = '#04060c';
       ctx.fillRect(0, 0, w, h);
+      // Estrellas de fondo: fijas, con un leve desplazamiento al mover la vista.
+      for (const s of STARS) {
+        const x = (((s.x * w + view.current.panX * 0.03) % w) + w) % w, y = (((s.y * h + view.current.panY * 0.03) % h) + h) % h;
+        ctx.fillStyle = `rgba(200,215,255,${s.a})`;
+        ctx.fillRect(x, y, s.s, s.s);
+      }
+      // Cinturón de asteroides, entre Marte y Júpiter. Cada punto gira según su distancia al Sol.
+      const years = (t - Date.UTC(2000, 0, 1)) / (365.25 * DAY);
+      ctx.fillStyle = 'rgba(190,175,150,0.4)';
+      for (const a of BELT) {
+        const ang = a.a0 + (2 * Math.PI * years) / Math.pow(a.r, 1.5);
+        const [x, y] = screen({ x: a.r * Math.cos(ang), y: a.r * Math.sin(ang) });
+        if (x < 0 || y < 0 || x > w || y > h) continue;
+        ctx.fillRect(x, y, 1.2, 1.2);
+      }
       // Órbitas
       ctx.lineWidth = 1;
       for (const b of BODIES) {
@@ -166,10 +205,41 @@ export default function Atlas({ design, onHome, onLab }: Props) {
         ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(sx, sy); ctx.stroke();
         ctx.setLineDash([]);
       }
+      // Viaje planeado: el camino completo punteado, el tramo ya recorrido sólido y la nave.
+      const trip = tripRef.current;
+      let craft: [number, number] | null = null;
+      if (trip) {
+        const { j } = trip;
+        const f = Math.max(0, Math.min(1, (t - j.depart) / (j.arrive - j.depart)));
+        const at = (k: number): [number, number] => {
+          if (j.id !== 'luna') return screen(journeyPoint(j, k));
+          // La Luna se dibuja separada de la Tierra: el camino une los dos puntos en pantalla.
+          const [ex, ey] = bodyScreen('tierra', t), [mx, my] = bodyScreen('luna', t);
+          return [ex + (mx - ex) * k, ey + (my - ey) * k];
+        };
+        const path = (to: number) => {
+          ctx.beginPath();
+          const steps = Math.max(2, Math.ceil(90 * to));
+          for (let i = 0; i <= steps; i++) { const [x, y] = at((i / steps) * to); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+          ctx.stroke();
+        };
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(255,179,71,0.55)';
+        ctx.setLineDash([5, 6]); path(1); ctx.setLineDash([]);
+        if (f > 0) { ctx.strokeStyle = '#ffb347'; ctx.lineWidth = 2.5; path(f); }
+        ctx.lineWidth = 1;
+        if (t >= j.depart) craft = at(f);
+      }
       ctx.font = '12px Inter, system-ui, sans-serif';
       for (const b of BODIES) {
         const [x, y] = bodyScreen(b.id, t);
         const r = dotRadius(b.id);
+        if (b.id === 'saturno' && r > 4) {
+          // Mitad trasera de los anillos, detrás del planeta.
+          ctx.strokeStyle = 'rgba(214,196,150,0.75)'; ctx.lineWidth = Math.max(1.5, r * 0.22);
+          ctx.beginPath(); ctx.ellipse(x, y, r * 2.1, r * 0.62, -0.38, Math.PI, 2 * Math.PI); ctx.stroke();
+          ctx.lineWidth = 1;
+        }
         if (b.id === 'sol') {
           const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
           g.addColorStop(0, 'rgba(255,211,90,0.55)'); g.addColorStop(1, 'rgba(255,211,90,0)');
@@ -187,24 +257,66 @@ export default function Atlas({ design, onHome, onLab }: Props) {
           ctx.fillStyle = g;
           ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
         }
+        if (b.id === 'saturno' && r > 4) {
+          // Mitad delantera de los anillos, por encima del planeta.
+          ctx.strokeStyle = 'rgba(232,216,170,0.9)'; ctx.lineWidth = Math.max(1.5, r * 0.22);
+          ctx.beginPath(); ctx.ellipse(x, y, r * 2.1, r * 0.62, -0.38, 0, Math.PI); ctx.stroke();
+          ctx.lineWidth = 1;
+        }
         if (b.id === selRef.current) {
           ctx.strokeStyle = '#ffb347';
           ctx.beginPath(); ctx.arc(x, y, r + 5, 0, Math.PI * 2); ctx.stroke();
         }
         if (b.id !== 'luna' || b.id === selRef.current || !visualRef.current) {
           ctx.fillStyle = b.id === selRef.current ? '#ffd9a0' : 'rgba(200,215,240,0.85)';
-          ctx.fillText(b.nombre, x + r + 6, y + 4);
+          ctx.fillText(b.nombre, x + (b.id === 'saturno' ? r * 2.1 : r) + 6, y + 4);
         }
+      }
+      if (craft) {
+        // La nave: un punto brillante con un halo que late.
+        const [x, y] = craft;
+        const pulse = 9 + 3 * Math.sin(performance.now() / 180);
+        const g = ctx.createRadialGradient(x, y, 0, x, y, pulse);
+        g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.35, 'rgba(255,200,120,0.6)'); g.addColorStop(1, 'rgba(255,179,71,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(x, y, pulse, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(x, y, 2.4, 0, Math.PI * 2); ctx.fill();
       }
     };
 
     const frame = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
-      if (speedRef.current > 0) dateRef.current += speedRef.current * DAY * dt;
+      const trip = tripRef.current;
+      if (trip && !trip.arrived) {
+        const { j } = trip;
+        if (dateRef.current < j.depart) {
+          // La espera hasta la ventana pasa en unos tres segundos.
+          dateRef.current = Math.min(j.depart, dateRef.current + Math.max(DAY, (j.depart - trip.from) / 3) * dt);
+        } else {
+          // El viaje entero dura unos ocho segundos, sea de días o de años.
+          dateRef.current = Math.min(j.arrive, dateRef.current + ((j.arrive - j.depart) / 8) * dt);
+          if (dateRef.current >= j.arrive) {
+            trip.arrived = true;
+            view.current.focus = j.id; view.current.home = false;
+          }
+        }
+      } else if (speedRef.current > 0) dateRef.current += speedRef.current * DAY * dt;
       if (view.current.zoom > 0) glide(dateRef.current, dt);
       draw(dateRef.current);
-      if (now - hudAt > 120 && speedRef.current > 0) { hudAt = now; setDate(dateRef.current); }
+      if (now - hudAt > 120 && (speedRef.current > 0 || trip)) {
+        hudAt = now;
+        setDate(dateRef.current);
+        if (trip) {
+          const { j } = trip, name = BODY[j.id].nombre, total = (j.arrive - j.depart) / 1000;
+          setTripInfo(dateRef.current < j.depart
+            ? `Waiting for the launch window: ${fmtDate(j.depart)}`
+            : trip.arrived
+              ? `Arrived at ${name} on ${fmtDate(j.arrive)}, after ${duration(total)}`
+              : `In flight to ${name} · ${duration((dateRef.current - j.depart) / 1000)} of ${duration(total)}`);
+        }
+      }
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
@@ -244,6 +356,7 @@ export default function Atlas({ design, onHome, onLab }: Props) {
         if (d < bestD) { bestD = d; best = b.id; }
       }
       if (best) {
+        if (best !== selRef.current) { tripRef.current = null; setTripInfo(null); }
         selRef.current = best; setSel(best);
         view.current.focus = best === 'sol' ? null : best;
         view.current.home = best === 'sol';
@@ -269,6 +382,8 @@ export default function Atlas({ design, onHome, onLab }: Props) {
   const dEarth = sel === 'tierra' ? 0 : distance('tierra', sel, date);
   const tr = trip(sel, date);
   const spare = stats.dvVacTotal - DV_LEO;
+  const out = outlook(sel, date, { solarAtEarthW: stats.solarW, baseW: stats.baseW, rateLeo: stats.rateMBs });
+  const far = sel === 'saturno' || sel === 'urano' || sel === 'neptuno';
 
   return (
     <div className="flight atlas">
@@ -288,6 +403,13 @@ export default function Atlas({ design, onHome, onLab }: Props) {
           {visual ? 'Visual scale' : 'Physical scale'}
         </button>
       </div>
+
+      {tripInfo && (
+        <div className="hud atlas-trip" role="status">
+          <span>{tripInfo}</span>
+          <button className="btn tiny ghost" onClick={clearTrip} aria-label="Clear the trip">✕</button>
+        </div>
+      )}
 
       <div className="hud panel atlas-side">
         <div className="atlas-bodies">
@@ -331,7 +453,29 @@ export default function Atlas({ design, onHome, onLab }: Props) {
                   ? `Your craft "${design.nombre}" reaches low orbit with ${n(spare)} m/s to spare: enough to depart for ${b.nombre}.`
                   : `Your craft "${design.nombre}" reaches low orbit with ${n(spare)} m/s to spare: it needs ${n(tr.dv - spare)} m/s more to depart for ${b.nombre}.`}
             </p>
-            <p className="note">Minimum-energy estimate with circular orbits. It does not include braking or landing on arrival. Interplanetary flight is not playable yet: the Atlas is for planning.</p>
+            <button className="btn primary wide" onClick={launchTrip} disabled={!tr.window && sel !== 'luna'}>
+              {sel === 'luna' ? 'Fly the trip now' : 'Launch at the next window'}
+            </button>
+            <p className="note">Watch the trip: time runs to the launch window, then the craft follows the transfer path and meets {b.nombre} where it will be on arrival. Minimum-energy estimate with circular orbits; it does not include braking or landing.</p>
+
+            <h4>Could your craft work there?</h4>
+            <div className="kv">
+              <span>Solar power there</span>
+              <b className={out.panelsShort > 0 ? 'bad' : 'ok'}>{n(out.solarW, out.solarW < 10 ? 1 : 0)} W of the {n(stats.solarW)} W it makes near Earth</b>
+              <span>Power it needs</span><b>{n(out.baseW)} W</b>
+              <span>Data link to Earth</span>
+              <b className={out.kbps === 0 ? 'bad' : ''}>{out.kbps === 0 ? 'no antenna' : out.kbps >= 100 ? `${n(out.kbps / 1000, 1)} Mbit/s` : `${n(out.kbps, out.kbps < 10 ? 2 : 0)} kbit/s`}</b>
+              <span>One 40 MB photo takes</span><b>{isFinite(out.photoTime) ? duration(out.photoTime) : 'never arrives'}</b>
+              <span>A command arrives in</span><b>{duration(out.delay)}</b>
+            </div>
+            <p className={`issue ${out.panelsShort > 0 || out.kbps === 0 ? 'warn' : 'ok-line'}`}>
+              {out.panelsShort > 0
+                ? `Not enough sunlight: it would need ${n(out.panelsShort)} more solar panel${out.panelsShort === 1 ? '' : 's'}${out.panelsShort > 6 ? ', more than it can carry' : ''}.${far ? ' This far out, real missions usually carry a nuclear power source instead.' : ''}`
+                : out.kbps === 0
+                  ? 'It has power, but without an antenna no data would ever come back.'
+                  : `It has enough power, and its antenna still reaches Earth${out.photoTime > 86400 ? ', though each photo takes more than a day to send' : ''}.`}
+              {out.delay > 5 && ' Nobody can steer it live at that distance: it has to act on its own.'}
+            </p>
             <button className="btn wide" onClick={onLab}>Redesign the craft in the lab</button>
           </>
         )}

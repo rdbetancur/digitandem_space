@@ -95,6 +95,16 @@ The NASA Glenn links still need to be checked one by one before submission.
   between circular, coplanar orbits, departing from a 200 km Earth orbit, not counting
   braking on arrival. The launch window is the date when the angle between Earth and the
   destination matches the one for that transfer.
+- **Atlas trip animation.** The craft follows half a transfer ellipse from where Earth is at
+  departure to where the destination will be on arrival, moving faster near the Sun as
+  Kepler's second law requires. The path is stretched slightly so it ends exactly on the
+  destination, because real orbits are not circular. The trip to the Moon is drawn as a
+  straight line. The asteroid belt and background stars are decorative, not real objects.
+- **"Could your craft work there?"** Solar power falls with the square of the distance to the
+  Sun. The data rate falls with the square of the distance to Earth and is calibrated so the
+  game's high-gain antenna gives about 8 kbit/s at 1 AU, the order of magnitude of the
+  MarCO CubeSats at Mars; the simple antenna scales in proportion. Real deep-space links
+  also depend on transmitter power and the size of the ground antenna, which are not modeled.
 - **Radiation and magnetic field.** Approximate curves: an equatorial dipole for the field and a
   qualitative curve for the dose, with the rise in the Van Allen belts.
 - **Parts.** Engines, tanks and materials are generic, with orders of magnitude taken from real
