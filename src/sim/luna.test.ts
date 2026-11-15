@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ALT0, FLARE, FLARE_WARN, HIGH_GATE, Luna, THRUST, MU_MOON, R_MOON, SAFE_VV, SHADOW, SITE_RADIUS, SURVIVE_H,
   brakingDistance, canAssist, createLuna, describeLuna, mass, maxWarpLuna, localFrame, lunaAction, lunaObjectives, lunaReport, predictPath, setThrottle,
-  siteDistance, stepDescent, stepSurface,
+  siteDistance, stepDescent, stepSurface, PAD, alongTrack, hoverTime, ignitionCountdown, redesignate, rough,
 } from './luna';
 
 interface Trace { maxSink: number; vhAtAssist: number | null; altAtStop: number | null }
@@ -21,6 +21,8 @@ function pilot(s: Luna, margin = 1, dtBurn = 0.05): Trace {
       if (canAssist(s)) {
         if (!s.landingAssist) tr.vhAtAssist = vh;
         s.landingAssist = true;
+        // Como haría una persona: si el punto designado tiene rocas, lo corre hasta suelo libre.
+        while (rough(s.target)) redesignate(s, 1);
       } else if (Math.abs(vh) > 3) { s.assist = 'frenado'; setThrottle(s, 1); }
       else { if (tr.altAtStop === null) tr.altAtStop = alt; setThrottle(s, 0); }
       tr.maxSink = Math.max(tr.maxSink, -vv);
@@ -106,6 +108,71 @@ describe('lunar descent', () => {
     const done = lunaObjectives(s);
     expect(done[0]).toBe(true);
     expect(done[1]).toBe(true);
+  });
+});
+
+describe('hazards and landing point redesignation', () => {
+  it('the computer aims at a boulder field, with clear ground a few pads away', () => {
+    expect(rough(0)).toBe(true);
+    expect(rough(5 * PAD)).toBe(false);
+    expect(rough(-4 * PAD)).toBe(false);
+  });
+
+  it('trusting the landing assist without redesignating ends on the boulders', () => {
+    const s = createLuna();
+    let braking = false;
+    for (let i = 0; i < 400000 && s.phase === 'descenso' && !s.ended; i++) {
+      if (!braking && siteDistance(s) <= brakingDistance(s)) braking = true;
+      if (braking) {
+        if (canAssist(s)) s.landingAssist = true;
+        else if (Math.abs(localFrame(s).vh) > 3) setThrottle(s, 1);
+        else setThrottle(s, 0);
+      }
+      stepDescent(s, braking ? 0.05 : 0.5);
+    }
+    expect(s.ended).toBe('choque');
+    expect(s.touchdown!.rough).toBe(true);
+    expect(s.touchdown!.vv).toBeLessThanOrEqual(SAFE_VV);
+    expect(s.events.some((e) => e.text.includes('Redesignate'))).toBe(true);
+    expect(lunaReport(s).causas.some((c) => c.includes('boulder'))).toBe(true);
+  });
+
+  it('the assist flies to the redesignated point and lands on it', () => {
+    const s = land();
+    expect(s.touchdown!.safe).toBe(true);
+    expect(s.redesignations).toBeGreaterThan(0);
+    expect(rough(alongTrack(s))).toBe(false);
+    expect(Math.abs(alongTrack(s) - s.target)).toBeLessThan(PAD / 2);
+  });
+
+  it('a late redesignation costs hover propellant', () => {
+    const a = land();
+    const b = createLuna();
+    let moved = false;
+    for (let i = 0; i < 400000 && b.phase === 'descenso' && !b.ended; i++) {
+      if (siteDistance(b) <= brakingDistance(b)) {
+        if (canAssist(b)) {
+          b.landingAssist = true;
+          if (!moved && localFrame(b).alt < 40) { moved = true; while (rough(b.target)) redesignate(b, -1); }
+        } else if (Math.abs(localFrame(b).vh) > 3) setThrottle(b, 1);
+        else setThrottle(b, 0);
+      }
+      stepDescent(b, 0.05);
+    }
+    expect(b.touchdown!.safe).toBe(true);
+    expect(b.prop).toBeLessThan(a.prop);
+    expect(hoverTime(b)).toBeGreaterThan(0);
+  });
+
+  it('counts down to the ignition point while coasting', () => {
+    const s = createLuna();
+    const t0 = ignitionCountdown(s)!;
+    expect(t0).toBeGreaterThan(60);
+    expect(t0).toBeLessThan(240);
+    for (let i = 0; i < 20; i++) stepDescent(s, 0.5);
+    expect(ignitionCountdown(s)!).toBeCloseTo(t0 - 10, 0);
+    setThrottle(s, 1);
+    expect(ignitionCountdown(s)).toBeNull();
   });
 });
 

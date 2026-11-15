@@ -16,6 +16,7 @@ import { describeFlight, setFlightContext } from './missionControlContext';
 import Term from './Term';
 import { isMapView, updateCamera, zoomCamera } from './flightCamera';
 import { circularizationEstimate } from './circularization';
+import { isMuted, playCrash, playCue, playTouchdown, setEngine, setMuted, unlockAudio } from './audio';
 
 const WARPS = [1, 2, 5, 10, 50, 100, 1000];
 const SAS_LABEL: Record<Sas, string> = { mantener: 'Hold', prograda: 'Prograde', retrograda: 'Retrograde' };
@@ -110,6 +111,8 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
   const [rightOpen, setRightOpen] = useState(() => window.innerWidth > 640);
   const mat = MATERIALS[design.material];
   const togglePause = () => { pausedRef.current = !pausedRef.current; setPaused(pausedRef.current); };
+  const [muted, setMutedState] = useState(isMuted);
+  const toggleMute = () => { unlockAudio(); setMuted(!isMuted()); setMutedState(isMuted()); };
   const toggleDeploy = () => {
     const f = flightRef.current;
     if (f.deployed) retract(f);
@@ -158,9 +161,11 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
       if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
       if (e.repeat) return;
+      unlockAudio();
       keys.current.add(k);
       const f = flightRef.current;
       if (k === 'Escape') { togglePause(); return; }
+      if (k === 'n') { toggleMute(); return; }
       if (pausedRef.current) return;
       if (k === ' ') { f.autopilot = false; stageAction(f); setHelp(false); }
       else if (k === 'z') { f.autopilot = false; setThrottle(f, 1); }
@@ -182,7 +187,8 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
-    return () => { setFlightContext(null); window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
+    window.addEventListener('pointerdown', unlockAudio);
+    return () => { setFlightContext(null); setEngine(0); window.removeEventListener('pointerdown', unlockAudio); window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -190,6 +196,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
     let raf = 0, last = performance.now(), hudAt = 0, time = 0;
+    let heard = flightRef.current.events.length, endHeard = false;
     // Resolución adaptable: si el equipo no alcanza 30 cuadros por segundo, se dibuja con menos píxeles.
     let scale = Math.min(1.5, window.devicePixelRatio || 1);
     let slow = 0, frames = 0, acc = 0;
@@ -276,6 +283,17 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         }
         particles.current = particles.current.filter((p) => p.life > 0).slice(-260);
       }
+      // Sonido: el motor sigue al empuje; cada aviso nuevo tiene su tono (el más grave, si hay varios).
+      setEngine(!f.ended && !pausedRef.current && f.now.thrust > 0 ? Math.max(0.15, f.throttle) : 0);
+      if (f.ended && !endHeard) {
+        endHeard = true;
+        if (f.ended === 'aterrizaje') { playTouchdown(); playCue('ok'); } else if (f.ended !== 'usuario') playCrash();
+        heard = f.events.length;
+      } else if (f.events.length > heard) {
+        const kinds = f.events.slice(heard).map((e) => e.kind);
+        heard = f.events.length;
+        playCue(kinds.includes('bad') ? 'bad' : kinds.includes('warn') ? 'warn' : kinds.includes('ok') ? 'ok' : 'info');
+      }
       const cam = camRef.current;
       updateCamera(cam, real, Math.atan2(f.r.y, f.r.x));
       render(ctx, canvas.clientWidth, canvas.clientHeight, f, cam, time, particles.current, mission.target?.pos(f.t));
@@ -310,6 +328,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         <button className="btn tiny" onClick={toggleMap} title="Key M">{isMapView(camRef.current) ? 'Craft view' : 'Map'}</button>
         <button className={`btn tiny ${paused ? 'on' : ''}`} onClick={togglePause} title="Key Esc">{paused ? 'Resume' : 'Pause'}</button>
         <button className="btn tiny" onClick={() => setHelp((v) => !v)} title="Key H">Controls</button>
+        <button className="btn tiny" onClick={toggleMute} title="Key N" aria-pressed={!muted}>{muted ? 'Sound off' : 'Sound on'}</button>
         <button className={`btn tiny ${guideOpen ? 'on' : ''}`} onClick={() => { setGuideOpen((v) => !v); setHelp(false); }} aria-pressed={guideOpen}>Guide</button>
         <button className="btn warn" onClick={finish}>End flight</button>
       </div>
@@ -444,6 +463,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
             <span className="keycap">, / .</span><span>Time warp</span>
             <span className="keycap">M</span><span>Orbital map · the mouse wheel zooms</span>
             <span className="keycap">G</span><span>Deploy · stow panels and antenna</span>
+            <span className="keycap">N</span><span>Sound on · off</span>
             <span className="keycap">Esc</span><span>Pause</span>
             <span className="keycap">C · 1–4</span><span>Science panel · use instrument</span>
           </div>

@@ -1,8 +1,9 @@
 // Dibujo de la misión lunar en Canvas 2D: descenso (vista cercana y mapa) y base en la superficie.
 
-import { Luna, R_MOON, SITE_ANGLE, FLARE, flareActive, localFrame, siteDistance, sunlit } from '../sim/luna';
+import { ASSIST_ALT, Luna, R_MOON, SITE_ANGLE, FLARE, alongTrack, flareActive, ignitionCountdown, localFrame, rough, siteDistance, sunlit } from '../sim/luna';
 import { terrainRadius, terrainElevation } from '../sim/lunarTerrain';
 import { drawLunarMap } from './lunarMap';
+import { drawCrash, drawDesignator, drawDust, drawEarth, drawHazards, drawMoonscape, drawSky } from './lunarScene';
 import { lunarEnvironment } from '../sim/lunarEnvironment';
 
 type Pt = { x: number; y: number };
@@ -55,19 +56,6 @@ function crater(ctx: CanvasRenderingContext2D, q: Pt, rx: number, seed: number, 
   ctx.beginPath(); ctx.ellipse(q.x + rx * 0.28, y + ry * 0.08, rx * 0.68, ry * 0.8, 0, 0, Math.PI * 2); ctx.fill();
 }
 
-/** La Tierra, siempre cerca del horizonte vista desde el polo sur lunar, iluminada desde la izquierda. */
-function earth(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  const r = 9;
-  ctx.fillStyle = '#0d1a33';
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  const g = ctx.createRadialGradient(x - 4, y - 3, 1, x - 2, y, r);
-  g.addColorStop(0, '#cfe6ff'); g.addColorStop(0.5, '#3d86e0'); g.addColorStop(1, '#1d4d99');
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(x, y, r, Math.PI / 2, Math.PI * 1.5); ctx.ellipse(x, y, r * 0.35, r, 0, -Math.PI / 2, Math.PI / 2); ctx.fill();
-  ctx.fillStyle = 'rgba(160, 200, 255, 0.12)';
-  ctx.beginPath(); ctx.arc(x, y, r + 3, 0, Math.PI * 2); ctx.fill();
-}
-
 const STARS: { x: number; y: number; r: number }[] = [];
 for (let i = 0, seed = 7; i < 220; i++) {
   seed = (seed * 16807) % 2147483647; const x = seed / 2147483647;
@@ -89,12 +77,23 @@ function drawLander(ctx: CanvasRenderingContext2D, size: number, throttle: numbe
   ctx.save();
   ctx.scale(k, k);
   if (throttle > 0.01) {
-    const len = 14 + 26 * throttle + Math.sin(time * 40) * 3;
-    const g = ctx.createLinearGradient(0, 8, 0, 8 + len);
-    g.addColorStop(0, 'rgba(255, 240, 200, 0.95)');
+    // En el vacío el chorro se abre en abanico: núcleo brillante y un halo ancho y tenue.
+    const len = 18 + 44 * throttle + Math.sin(time * 40) * 3 + Math.sin(time * 67) * 2;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const halo = ctx.createRadialGradient(0, 12, 1, 0, 14, len * 0.9);
+    halo.addColorStop(0, `rgba(255, 190, 110, ${0.5 * throttle})`); halo.addColorStop(1, 'rgba(255, 120, 40, 0)');
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 14, len * 0.9, 0, Math.PI * 2); ctx.fill();
+    const fan = ctx.createLinearGradient(0, 8, 0, 8 + len);
+    fan.addColorStop(0, 'rgba(255, 200, 130, 0.55)'); fan.addColorStop(1, 'rgba(255, 130, 50, 0)');
+    ctx.fillStyle = fan;
+    ctx.beginPath(); ctx.moveTo(-4, 8); ctx.lineTo(4, 8); ctx.lineTo(len * 0.42, 8 + len); ctx.lineTo(-len * 0.42, 8 + len); ctx.closePath(); ctx.fill();
+    const g = ctx.createLinearGradient(0, 8, 0, 8 + len * 0.8);
+    g.addColorStop(0, 'rgba(255, 255, 240, 1)'); g.addColorStop(0.4, 'rgba(255, 220, 150, 0.8)');
     g.addColorStop(1, 'rgba(255, 140, 60, 0)');
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.moveTo(-4, 8); ctx.lineTo(4, 8); ctx.lineTo(0, 8 + len); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-3.5, 8); ctx.lineTo(3.5, 8); ctx.lineTo(0, 8 + len * 0.8); ctx.closePath(); ctx.fill();
+    ctx.restore();
   }
   // Patas
   ctx.strokeStyle = '#b9c2d3'; ctx.lineWidth = 1.6;
@@ -121,12 +120,14 @@ export interface LanderView { map: boolean; path: Pt[]; impact: number | null }
 
 /** Descenso: vista que sigue a la nave con la superficie abajo, o mapa de toda la Luna. */
 export function drawDescent(ctx: CanvasRenderingContext2D, w: number, h: number, s: Luna, view: LanderView, time: number) {
-  sky(ctx, w, h);
   const fr = localFrame(s);
+  const theta = Math.atan2(s.r.y, s.r.x);
   if (view.map) {
-    drawLunarMap(ctx, w, h, Math.atan2(s.r.y, s.r.x), SITE_ANGLE, view.path, view.impact);
+    sky(ctx, w, h);
+    drawLunarMap(ctx, w, h, s, view.path, view.impact, time);
     return;
   }
+  drawSky(ctx, w, h, theta);
 
   // Vista cercana: la vertical local de la nave apunta hacia arriba en pantalla. El suelo
   // queda fijo abajo y la nave baja hacia él; la escala cambia en forma continua con la altura.
@@ -138,34 +139,36 @@ export function drawDescent(ctx: CanvasRenderingContext2D, w: number, h: number,
     const d = { x: p.x - s.r.x, y: p.y - s.r.y };
     return { x: w / 2 + (d.x * fr.fwd.x + d.y * fr.fwd.y) * ppm, y: shipY - (d.x * fr.up.x + d.y * fr.up.y) * ppm };
   };
-  const theta = Math.atan2(s.r.y, s.r.x);
-  const half = (w / 2 / ppm) * 1.15;
-  const span = Math.min(Math.PI, half / R_MOON + 1e-6);
-  const onSurface = (u: number) => P({ x: Math.cos(u / R_MOON) * terrainRadius(u / R_MOON), y: Math.sin(u / R_MOON) * terrainRadius(u / R_MOON) });
-  const u0 = theta * R_MOON;
+  const crashed = s.ended === 'choque';
+  if (crashed && crash.s !== s) crash = { s, at: time };
+  const burn = s.prop > 0 && !s.ended ? s.throttle : 0;
 
-  earth(ctx, w * 0.8, Math.min(groundY - 70, h * 0.3));
+  drawEarth(ctx, w * 0.8, Math.min(groundY - 150, h * 0.27), Math.max(16, h * 0.03));
 
-  const N = 240;
-  // Regolito: un arco de la esfera real, con el borde iluminado por el Sol rasante del polo.
-  const surf: Pt[] = [];
-  for (let i = 0; i <= N; i++) surf.push(onSurface(u0 + span * R_MOON * (i / N - 0.5) * 2));
-  const grad = ctx.createLinearGradient(0, groundY - 10, 0, h);
-  grad.addColorStop(0, '#8c8f96'); grad.addColorStop(0.15, '#6f727a'); grad.addColorStop(1, '#3d4046');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  surf.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-  ctx.lineTo(w + 4000, h + 4000); ctx.lineTo(-4000, h + 4000); ctx.closePath(); ctx.fill();
-
-  // Borde del suelo iluminado.
-  ctx.strokeStyle = '#b4b8bf'; ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  surf.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-  ctx.stroke();
+  // El motor sacude la cámara.
+  ctx.save();
+  ctx.translate(Math.sin(time * 71) * 1.3 * burn, Math.cos(time * 93) * 1.3 * burn);
+  const scape = drawMoonscape(ctx, w, h, alongTrack(s), ppm, groundY);
+  drawHazards(ctx, w, scape, ppm, alt, time);
 
   drawPath(ctx, view.path, P);
+  // Punto de encendido: donde la distancia al sitio iguala la distancia de frenado.
+  const tIgn = ignitionCountdown(s);
+  if (tIgn !== null && tIgn > 0) {
+    const ix = w / 2 + tIgn * fr.vh * ppm;
+    ctx.fillStyle = '#ffb347'; ctx.strokeStyle = '#ffb347'; ctx.font = '600 12px system-ui, sans-serif';
+    if (ix < w - 40) {
+      ctx.setLineDash([4, 5]); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(ix, shipY - 34); ctx.lineTo(ix, shipY + 34); ctx.stroke(); ctx.setLineDash([]);
+      ctx.textAlign = 'center'; ctx.fillText('Ignition point', ix, shipY - 42);
+    } else { ctx.textAlign = 'right'; ctx.fillText(`Ignition point ${fmtKm(tIgn * fr.vh)} →`, w - 14, shipY - 12); }
+  }
   const site = P({ x: Math.cos(SITE_ANGLE) * terrainRadius(SITE_ANGLE), y: Math.sin(SITE_ANGLE) * terrainRadius(SITE_ANGLE) });
-  if (site.x > -50 && site.x < w + 50) marker(ctx, site.x, site.y, '#5adca0', 'Site');
+  if (alt < ASSIST_ALT && !crashed) {
+    const tx = scape.xOf(s.target);
+    if (tx > -30 && tx < w + 30) drawDesignator(ctx, tx, scape.groundAt(tx), rough(s.target), time);
+  }
+  if (site.x > -50 && site.x < w + 50) marker(ctx, site.x, site.y, '#9fc6ff', 'Ice site');
   else {
     // Flecha al borde que indica hacia dónde queda el sitio.
     const right = site.x > w / 2;
@@ -182,14 +185,30 @@ export function drawDescent(ctx: CanvasRenderingContext2D, w: number, h: number,
     ctx.fillStyle = `rgba(0, 0, 0, ${0.45 * (1 - gap / (h * 0.25))})`;
     ctx.beginPath(); ctx.ellipse(w / 2 + gap * 0.6, groundY + 2, size * 0.5, size * 0.07, 0, 0, Math.PI * 2); ctx.fill();
   }
+  drawDust(ctx, w / 2, groundY, alt, burn, time);
+  if (crashed) drawCrash(ctx, w / 2, groundY, time - crash.at);
   // La posición de la nave es la de sus patas: se dibuja con los pies sobre ese punto.
   ctx.save();
   ctx.translate(w / 2, shipY);
-  ctx.rotate(s.pitch);
+  ctx.rotate(crashed ? 1.25 : s.pitch);
   ctx.translate(0, -size * FOOT);
-  drawLander(ctx, size, s.prop > 0 ? s.throttle : 0, time);
+  drawLander(ctx, size, burn, time);
   ctx.restore();
+  ctx.restore();
+
+  // Cuenta regresiva al encendido, bien visible.
+  if (tIgn !== null && !s.ended) {
+    const late = tIgn <= 0;
+    ctx.textAlign = 'center';
+    ctx.font = '600 13px system-ui, sans-serif';
+    ctx.fillStyle = late ? '#ff6b5e' : '#ffb347';
+    ctx.fillText(late ? 'IGNITION POINT PASSED' : 'IGNITION IN', w / 2, h * 0.16);
+    ctx.font = '700 34px ui-monospace, Consolas, monospace';
+    if (!late || Math.sin(time * 10) > -0.3) ctx.fillText(late ? 'FULL THROTTLE · Z' : `${Math.floor(tIgn / 60)}:${String(Math.floor(tIgn % 60)).padStart(2, '0')}`, w / 2, h * 0.16 + 36);
+  }
 }
+
+let crash: { s: Luna | null; at: number } = { s: null, at: 0 };
 
 function drawPath(ctx: CanvasRenderingContext2D, path: Pt[], P: (p: Pt) => Pt) {
   if (path.length < 2) return;
@@ -215,7 +234,8 @@ function cross(ctx: CanvasRenderingContext2D, x: number, y: number) {
 /** Superficie: la base junto al cráter, el Sol rasante del polo y la tormenta solar. */
 export function drawSurface(ctx: CanvasRenderingContext2D, w: number, h: number, s: Luna, time: number) {
   const lit = sunlit(s.hours);
-  sky(ctx, w, h);
+  drawSky(ctx, w, h, SITE_ANGLE);
+  drawEarth(ctx, w * 0.58, h * 0.3, Math.max(16, h * 0.03));
   const ground = h * 0.66;
   ctx.fillStyle = '#d6dbe4'; ctx.font = '12px system-ui'; ctx.textAlign = 'center';
   ctx.fillText('Base operations schematic · background profile from LOLA (vertical scale exaggerated)', w / 2, h * 0.16);

@@ -93,6 +93,30 @@ conduction, terrain self-heating and permanent cold traps (which can be much col
 not solved. Cabin cooling uses a separate simplified radiative heat-loss balance; it is not
 the ground temperature. The 5.6% ice fraction remains a Cabeus-inspired resource scenario.
 
+### Lunar descent rework: hazards, redesignation and scenery (15 November 2026)
+
+| Element | Use in the game | Source or status |
+|---|---|---|
+| Boulder field at the computer's aim point; the pilot moves the landing point and lands low on propellant | Hazard scan (30 m pads), landing point redesignation with ← →, "seconds of hover propellant" calls | Inspired by Apollo 11: the guidance was taking Eagle into a boulder field near West crater and Armstrong flew past it. [NASA History, Apollo 11 Lunar Surface Journal, "The First Lunar Landing"](https://www.nasa.gov/history/alsj/a11/a11.landing.html). The Landing Point Designator let the commander shift the target in steps; our 30 m step and the boulder layout are game values, not survey data of the 89°S site |
+| "High gate" and "low gate" calls | Descent callouts | Phase names of the Apollo powered descent, [Apollo Lunar Surface Journal](https://www.nasa.gov/history/alsj/); our gate heights (about 2 km and 150 m) are game values |
+| Start of the game 17° of orbit (about 515 km) before the site | Shortens the coast to about two minutes | Game design choice; the orbit and the physics are unchanged |
+| South polar chart and context globe in the map view | Orthographic reprojection of the bundled LROC `lroc_color_2k.jpg`, with contrast stretched for legibility and synthetic sphere shading | [NASA SVS CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/); display processing only, not photometry |
+| Descent profile panel | Height against distance to the site over the measured LOLA profile, heights exaggerated | Same LOLA profile as the simulation |
+
+Sound. All audio is synthesized in the browser with the Web Audio API (`src/ui/audio.ts`);
+no recordings or third-party audio files are used. The radio beeps use the Quindar tone
+frequencies of NASA air-to-ground transmissions (2,525 Hz and 2,475 Hz),
+[Apollo Lunar Surface Journal, "Quindar Tones"](https://www.nasa.gov/history/alsj/quindar.html).
+There is no sound in a vacuum: the engine rumble stands for what the crew hears through the
+cabin structure. Alarm and contact sounds are game inventions.
+
+Scenery notes. The ground line under the lander is the measured LOLA profile used by the
+radar and the contact test. Its shading (slope toward the Sun and cast shadows) is computed
+from that profile with the Sun drawn 7° above the horizon, higher than the real 1° to 2° at
+the pole so the relief stays readable. The far ridges are other stretches of the same LOLA
+meridian drawn for depth, not the true view across the track. Small craters, boulders, engine
+dust, stars and the Earth are procedural illustrations.
+
 ## Solar system atlas
 
 | Data | Source |

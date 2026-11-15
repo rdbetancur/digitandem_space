@@ -32,6 +32,10 @@ const TURN_RATE = (45 * Math.PI) / 180;
 export const ALT0 = 15e3;
 /** El sitio de alunizaje está 40° adelante en la órbita. */
 export const SITE_ANGLE = (40 * Math.PI) / 180;
+/** La partida empieza con el sitio 17° adelante: unos dos minutos de órbita antes del encendido. */
+export const START_ANGLE = (23 * Math.PI) / 180;
+/** Ancho de cada parcela del mapa de peligros del radar (m). Escenario de juego. */
+export const PAD = 30;
 /** Límites de un contacto seguro. */
 export const SAFE_VV = 3;
 export const SAFE_VH = 2;
@@ -81,7 +85,7 @@ export type LunaEnd = 'choque' | 'energia' | 'oxigeno' | 'radiacion' | 'completa
 
 export interface LunaEvent { t: number; text: string; kind: 'info' | 'ok' | 'warn' | 'bad' }
 
-export interface Touchdown { vv: number; vh: number; tilt: number; dist: number; t: number; prop: number; safe: boolean }
+export interface Touchdown { vv: number; vh: number; tilt: number; dist: number; t: number; prop: number; safe: boolean; rough?: boolean }
 
 export interface Luna {
   phase: 'descenso' | 'superficie';
@@ -97,6 +101,10 @@ export interface Luna {
   /** Asistente de alunizaje: regula el empuje para bajar despacio. */
   landingAssist: boolean;
   usedAssist: boolean;
+  /** Punto de alunizaje designado: metros más allá del sitio, a lo largo de la órbita. */
+  target: number;
+  /** Veces que el jugador cambió el punto de alunizaje. */
+  redesignations: number;
   dvUsed: number;
   maxSpeedDown: number;
   touchdown: Touchdown | null;
@@ -125,14 +133,17 @@ const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export function createLuna(): Luna {
   const r0 = R_MOON + ALT0;
+  const v0 = Math.sqrt(MU_MOON / r0);
   return {
     phase: 'descenso', t: 0,
-    r: { x: r0, y: 0 }, v: { x: 0, y: Math.sqrt(MU_MOON / r0) },
+    r: { x: r0 * Math.cos(START_ANGLE), y: r0 * Math.sin(START_ANGLE) },
+    v: { x: -v0 * Math.sin(START_ANGLE), y: v0 * Math.cos(START_ANGLE) },
     prop: PROP0, throttle: 0, pitch: -Math.PI / 2, assist: 'frenado', landingAssist: false, usedAssist: false,
+    target: 0, redesignations: 0,
     dvUsed: 0, maxSpeedDown: 0, touchdown: null, ended: null,
     hours: 0, battery: 20000, o2: O2_0, water: 0, waterTotal: 0, o2Made: 0, temp: CABIN_T, dose: 0, flareDose: 0,
     panels: false, drill: false, electro: false, shelter: false, minBattery: 20000,
-    events: [{ t: 0, text: 'Polar orbit at 15 km above the mean lunar radius. Target: 89°S, 0°E, 40° ahead. Radar height and contact use NASA LOLA terrain. This is a simulated expedition, not a surveyed landing zone.', kind: 'info' }],
+    events: [{ t: 0, text: `Polar orbit at 15 km above the mean lunar radius. Target: 89°S, 0°E, ${n(((SITE_ANGLE - START_ANGLE) * R_MOON) / 1000)} km ahead. Radar height and contact use NASA LOLA terrain. This is a simulated expedition, not a surveyed landing zone.`, kind: 'info' }],
     flags: {},
   };
 }
@@ -198,6 +209,44 @@ export function predictPath(s: Luna, maxT = 7000): { points: { x: number; y: num
   return { points, impact: null, impactT: Infinity };
 }
 
+// --- Peligros y punto de alunizaje designado (escenario de juego, inspirado en Apollo 11) ---
+
+const cellHash = (i: number) => { const x = Math.sin(i * 12.9898 + 4.1414) * 43758.5453; return x - Math.floor(x); };
+
+/**
+ * ¿Hay rocas en el punto u (metros más allá del sitio)? El punto apuntado por la computadora
+ * cae en un campo de rocas, como le pasó a Apollo 11: hay que elegir otro lugar.
+ */
+export function rough(u: number): boolean {
+  const i = Math.round(u / PAD);
+  if (Math.abs(i) <= 2) return true;
+  if (i === 5 || i === -4) return false;
+  return cellHash(i) < 0.38;
+}
+
+/** Posición de la nave a lo largo de la órbita, en metros más allá del sitio. */
+export const alongTrack = (s: Pick<Luna, 'r'>) => -siteDistance(s);
+/** Distancia por la superficie hasta el punto designado (m); positiva si está adelante. */
+export const targetDistance = (s: Pick<Luna, 'r' | 'target'>) => siteDistance(s) + s.target;
+
+/** Mueve el punto de alunizaje designado una parcela hacia adelante (+) o hacia atrás (−). */
+export function redesignate(s: Luna, steps: number) {
+  if (s.phase !== 'descenso' || s.ended) return;
+  s.target = (Math.round(s.target / PAD) + steps) * PAD;
+  s.redesignations++;
+}
+
+/** Segundos que la nave puede sostenerse en el aire con el propelente que queda. */
+export const hoverTime = (s: Luna) => dvLeft(s) / G_MOON;
+
+/** Segundos hasta el punto de encendido a pleno empuje; null si el motor ya está encendido. */
+export function ignitionCountdown(s: Luna): number | null {
+  const { vh } = localFrame(s);
+  const b = brakingDistance(s);
+  if (s.throttle > 0 || vh < 100 || !isFinite(b)) return null;
+  return (siteDistance(s) - b) / vh;
+}
+
 /** Altura a la que el frenado debería terminar: el "portón alto" de los alunizajes Apollo (m). */
 export const HIGH_GATE = 1500;
 
@@ -205,13 +254,13 @@ export const HIGH_GATE = 1500;
  * Guiado: reparte el empuje entre llevar la velocidad vertical a target (m/s, negativa hacia
  * abajo) y anular la velocidad horizontal. accel es la aceleración disponible.
  */
-function guidance(s: Luna, accel: number, target: number, gain: number) {
+function guidance(s: Luna, accel: number, target: number, gain: number, vhTarget = 0) {
   const { vv, vh, alt, rm } = localFrame(s);
   // Gravedad menos el "alivio" centrífugo de la velocidad horizontal.
   const gEff = MU_MOON / (rm * rm) - (vh * vh) / rm;
   const av = Math.max(0, Math.min(accel, gEff + gain * (target - vv)));
   const room = Math.sqrt(Math.max(0, accel * accel - av * av));
-  const ah = -Math.sign(vh) * Math.min(room, Math.abs(vh) * 0.6);
+  const ah = Math.max(-room, Math.min(room, (vhTarget - vh) * 0.6));
   let pitch = Math.atan2(ah, av);
   // Cerca del suelo las patas tienen que quedar casi verticales.
   const lim = alt < 60 ? 0.17 : Math.PI / 2;
@@ -223,7 +272,14 @@ function guidance(s: Luna, accel: number, target: number, gain: number) {
 function landingCommand(s: Luna): { pitch: number; throttle: number } {
   const amax = Math.max(1e-6, maxAccel(s));
   const { alt } = localFrame(s);
-  const g = guidance(s, amax, -Math.max(1.2, Math.min(25, alt / 10)), 1.2);
+  // Vuela hacia el punto designado: baja con decisión cuando está encima y, si no, se queda
+  // a unos 90 m mientras se traslada. Sostenerse en el aire cuesta propelente.
+  const dx = targetDistance(s);
+  const over = Math.abs(dx) < 6 + alt * 0.2;
+  const base = Math.max(1.2, Math.min(25, alt / 10));
+  const sink = over ? base : Math.min(base, Math.max(0, (alt - 90) / 10));
+  const vmax = Math.max(2, Math.min(45, alt * 0.12));
+  const g = guidance(s, amax, -sink, 1.2, Math.max(-vmax, Math.min(vmax, dx * 0.15)));
   return { pitch: g.pitch, throttle: Math.min(1, g.accel / amax) };
 }
 
@@ -280,8 +336,16 @@ export function stepDescent(s: Luna, dt: number, turn = 0) {
     }
   }
   if (s.landingAssist && !canAssist(s)) s.landingAssist = false;
-  if (s.landingAssist) { s.throttle = landingCommand(s).throttle; s.usedAssist = true; }
   const fr = localFrame(s);
+  if (s.landingAssist && !s.flags.lpd) {
+    // Al conectar el asistente la computadora apunta al sitio; si quedó lejos, baja donde está.
+    s.flags.lpd = true;
+    const d = siteDistance(s);
+    if (Math.abs(d) > SITE_RADIUS) s.target = Math.round((-d + (fr.vh * Math.abs(fr.vh)) / 4) / PAD) * PAD;
+    if (rough(s.target)) log(s, 'Program alert: the computer is aiming at a boulder field. Redesignate the landing point with ← →.', 'warn');
+  }
+  if (s.landingAssist) { s.throttle = landingCommand(s).throttle; s.usedAssist = true; }
+  callouts(s, fr.alt);
   const m = mass(s);
   let thrust = s.prop > 0 ? THRUST * s.throttle : 0;
   const burn = (thrust / (ISP * G0)) * dt;
@@ -301,6 +365,21 @@ export function stepDescent(s: Luna, dt: number, turn = 0) {
   if (after.alt <= 0) touchDown(s, after.vv, after.vh);
 }
 
+/** Avisos de la sala de control durante el descenso, una sola vez cada uno. */
+function callouts(s: Luna, alt: number) {
+  const once = (k: string, ok: boolean, text: string, kind: LunaEvent['kind'] = 'info') => {
+    if (ok && !s.flags[k]) { s.flags[k] = true; log(s, text, kind); }
+  };
+  const burning = s.throttle > 0 && s.prop > 0;
+  once('pdi', burning, 'Ignition. Powered descent has started: the engine is the only brake.');
+  once('highGate', burning && alt < HIGH_GATE + 500, 'High gate. The surface is coming into view.');
+  once('radar', alt < ASSIST_ALT, 'Landing radar locked. Hazard scan online: green ground is clear, red is boulders. Press L for the landing assist.');
+  once('lowGate', !!s.flags.pdi && alt < 150, 'Low gate. Pick your spot.');
+  const hover = hoverTime(s);
+  once('fuel60', !!s.flags.radar && hover < 60 && s.prop > 0, '60 seconds of hover propellant left.', 'warn');
+  once('fuel30', !!s.flags.radar && hover < 30 && s.prop > 0, '30 seconds! Land now.', 'bad');
+}
+
 function touchDown(s: Luna, vv: number, vh: number) {
   const theta = Math.atan2(s.r.y, s.r.x);
   const k = terrainRadius(theta) / Math.hypot(s.r.x, s.r.y);
@@ -311,19 +390,22 @@ function touchDown(s: Luna, vv: number, vh: number) {
   vh = vv * Math.sin(slope) + vh * Math.cos(slope);
   vv = normalV;
   const dist = Math.abs(siteDistance(s));
-  const safe = -vv <= SAFE_VV && Math.abs(vh) <= SAFE_VH && tilt <= SAFE_TILT;
-  s.touchdown = { vv: -vv, vh: Math.abs(vh), tilt, dist, t: s.t, prop: s.prop, safe };
+  const gentle = -vv <= SAFE_VV && Math.abs(vh) <= SAFE_VH && tilt <= SAFE_TILT;
+  const rocks = rough(alongTrack(s));
+  const safe = gentle && !rocks;
+  s.touchdown = { vv: -vv, vh: Math.abs(vh), tilt, dist, t: s.t, prop: s.prop, safe, rough: rocks };
   s.v = { x: 0, y: 0 };
   s.throttle = 0;
   s.landingAssist = false;
   if (!safe) {
     s.ended = 'choque';
+    if (gentle) { log(s, 'Crash: a footpad came down on a boulder and the lander tipped over.', 'bad'); return; }
     const why = -vv > SAFE_VV ? `falling at ${n(-vv, 1)} m/s` : Math.abs(vh) > SAFE_VH ? `sliding sideways at ${n(Math.abs(vh), 1)} m/s` : `tilted ${n((tilt * 180) / Math.PI)}°`;
     log(s, `Crash: the lander hit the surface ${why}.`, 'bad');
     return;
   }
   s.phase = 'superficie';
-  log(s, `Touchdown at ${n(-vv, 1)} m/s, ${dist < 1000 ? `${n(dist)} m` : `${n(dist / 1000, 1)} km`} from the site.`, 'ok');
+  log(s, `Contact light. Engine stop. Touchdown at ${n(-vv, 1)} m/s, ${dist < 1000 ? `${n(dist)} m` : `${n(dist / 1000, 1)} km`} from the site.`, 'ok');
   if (dist <= SITE_RADIUS) log(s, 'You reached the target region. Solar availability follows the LOLA horizon model; ice extraction is a mission scenario.', 'info');
   else log(s, 'You landed away from the site. The rover will take longer to reach the ice.', 'warn');
 }
@@ -525,6 +607,10 @@ export function lunaReport(s: Luna): Report {
     titulo = 'Crash on the Moon';
     resultado = 'fallo';
     causas.push(`The lander hit the surface at ${n(td.vv, 1)} m/s downward and ${n(td.vh, 1)} m/s sideways, tilted ${n((td.tilt * 180) / Math.PI)}°. The legs take up to ${SAFE_VV} m/s down, ${SAFE_VH} m/s sideways and ${n((SAFE_TILT * 180) / Math.PI)}° of tilt.`);
+    if (td.rough) {
+      causas.push('The ground under the lander was a boulder field: a footpad on a rock tips the lander over even at a gentle speed.');
+      sugerencias.push('Below 2 km the hazard scan paints clear ground green and boulders red. With the landing assist on, press ← or → to move the landing point to a green patch, as Neil Armstrong did on Apollo 11.');
+    }
     if (td.prop <= 0) causas.push('The propellant ran out before touchdown: there was nothing left to brake with.');
     else causas.push(`You still had ${n(td.prop)} kg of propellant: the engine could have slowed you down.`);
     if (td.vh > SAFE_VH) sugerencias.push('Cancel the horizontal speed first, high up, then come down vertically.');
@@ -534,6 +620,7 @@ export function lunaReport(s: Luna): Report {
     aciertos.push(`Touchdown at ${n(td.vv, 1)} m/s, ${td.dist < 1000 ? `${n(td.dist)} m` : `${n(td.dist / 1000, 1)} km`} from the site, with ${n(td.prop)} kg of propellant left.`);
     aciertos.push(`The descent cost ${n(s.dvUsed)} m/s of delta-v. Braking from a low Earth orbit would mean cancelling about 7,800 m/s; the Moon's low gravity makes its orbital speed much smaller.`);
     if (s.usedAssist) aciertos.push('You used the landing assist for the final meters, like the radar-guided descents of real landers.');
+    if (s.redesignations > 0) aciertos.push(`You moved the landing point ${s.redesignations} time${s.redesignations === 1 ? '' : 's'} to avoid the boulders. Apollo 11 did the same: Armstrong flew past a boulder field and landed with about 25 seconds of propellant to spare.`);
     if (s.ended === 'completada') {
       titulo = allDone ? 'Mission accomplished' : 'The crew survived';
       aciertos.push(`The crew lived ${n(days)} days on the Moon. The battery never dropped below ${n(s.minBattery / 1000, 1)} kWh.`);
@@ -619,6 +706,7 @@ export function describeLuna(s: Luna): string {
     lines.push(
       `Lunar descent, T+${n(s.t)} s. Altitude ${n(fr.alt)} m, vertical speed ${n(fr.vv, 1)} m/s, horizontal speed ${n(fr.vh, 1)} m/s.`,
       `Distance to site ${n(siteDistance(s) / 1000, 1)} km, braking distance at full thrust ${isFinite(b) ? `${n(b / 1000, 1)} km` : s.prop > 0 ? 'unreachable: not enough propellant to stop' : 'none: no propellant left'}. ${p.impact === null ? 'Still in a stable orbit.' : `If the engine stays off, impact ${n(Math.abs(miss) / 1000, 1)} km ${miss >= 0 ? 'before' : 'past'} the site.`}`,
+      fr.alt < ASSIST_ALT ? `Hazard scan: designated landing point ${n(Math.abs(targetDistance(s)))} m ${targetDistance(s) >= 0 ? 'ahead' : 'behind'}, ${rough(s.target) ? 'on boulders (redesignate with the arrow keys)' : 'on clear ground'}. Hover time left ${n(hoverTime(s))} s.` : `Hazard scan not available above ${ASSIST_ALT / 1000} km.`,
       `Throttle ${n(s.throttle * 100)} %, thrust angle ${n((s.pitch * 180) / Math.PI)}° from vertical, assist ${s.landingAssist ? 'landing assist' : ASSIST_TEXT[s.assist]}. Propellant ${n(s.prop)} kg, delta-v left ${n(dvLeft(s))} m/s.`,
     );
   } else {

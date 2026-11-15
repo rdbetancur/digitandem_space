@@ -4,11 +4,13 @@ import {
   SHADOW_WARN, SITE_ANGLE, SURVIVE_H, brakingDistance, canAssist, createLuna, describeLuna, dvLeft, endLuna, flareActive,
   localFrame, lunaAction, lunaObjectives, lunaReport, mass, maxWarpLuna, o2Hours, powerBalance, predictPath, setThrottle,
   siteDistance, stepDescent, stepSurface, sunlit, G_MOON, THRUST, DOSE_LIMIT,
+  ASSIST_ALT, hoverTime, ignitionCountdown, redesignate, rough, targetDistance,
 } from '../sim/luna';
 import { Report } from '../sim/report';
 import { LanderView, drawDescent, drawSurface } from './landerDraw';
 import { setFlightContext } from './missionControlContext';
 import Term from './Term';
+import { isMuted, playClick, playCrash, playCue, playTouchdown, setEngine, setMuted, unlockAudio } from './audio';
 import { lunarEnvironment, LUNAR_SHADOWS } from '../sim/lunarEnvironment';
 import { lunarCoordinates, terrainElevation } from '../sim/lunarTerrain';
 
@@ -34,6 +36,7 @@ interface Hud {
   battery: number; gen: number; load: number; o2: number; o2h: number; water: number; waterTotal: number; temp: number; dose: number;
   lit: boolean; flare: boolean; panels: boolean; drill: boolean; electro: boolean; shelter: boolean;
   objectives: boolean[]; ended: Luna['ended']; events: Luna['events'];
+  ignition: number | null; hover: number; targetRough: boolean; targetDist: number;
 }
 
 function snapshot(s: Luna, warp: number, impact: number | null): Hud {
@@ -48,14 +51,17 @@ function snapshot(s: Luna, warp: number, impact: number | null): Hud {
     temp: s.temp, dose: s.dose, lit: sunlit(s.hours), flare: flareActive(s.hours),
     panels: s.panels, drill: s.drill, electro: s.electro, shelter: s.shelter,
     objectives: lunaObjectives(s), ended: s.ended, events: s.events.slice(-5),
+    ignition: ignitionCountdown(s), hover: hoverTime(s), targetRough: rough(s.target), targetDist: targetDistance(s),
   };
 }
 
 function hint(h: Hud): string {
   if (h.phase === 'descenso') {
     if (h.prop <= 0) return 'No propellant left: the engine can no longer brake. With no air on the Moon, nothing else will slow you down.';
-    if (h.alt < 2000 && !h.landingAssist) return 'Below 2 km the radar sees the ground: press L for the landing assist, or use Vertical and keep the descent rate near a tenth of your altitude.';
-    if (h.landingAssist) return 'The landing assist is holding a safe descent rate and cancelling drift. Watch the propellant.';
+    if (h.alt < 2000 && !h.landingAssist) return 'Below 2 km the radar sees the ground: press L for the landing assist, or fly it yourself with Vertical. Red ground is boulders: land on green.';
+    if (h.landingAssist && h.targetRough) return 'The computer is flying you into a boulder field, as it did on Apollo 11. Press ← or → to move the landing point onto green ground. Hovering burns propellant, so decide fast.';
+    if (h.landingAssist) return 'The landing point is clear. The assist flies there and sets you down. You can still move it with ← →, but every second in the air costs propellant.';
+    if (h.ignition !== null && h.ignition > 0) return 'Coast to the ignition point (speed up time with ▶). When the countdown reaches zero, go to full throttle (Z): braking any later overshoots the ice site.';
     if (h.throttle > 0) return 'Keep braking. The Braking assist aims to stop the horizontal speed just as you reach about 1.5 km. If it runs out higher up, lower the throttle.';
     if (h.site > h.braking * 1.3) return 'Coast toward the site (speed up time with ▶). Start braking when Distance to site gets close to Braking distance.';
     return 'Now: full throttle (Z) with the Braking assist. There is no air to slow you down, only the engine.';
@@ -79,8 +85,10 @@ export default function Lander({ onEnd, onHome }: Props) {
   const keys = useRef<Set<string>>(new Set());
   const warpRef = useRef(1);
   const viewRef = useRef<LanderView>({ map: false, path: [], impact: null });
-  const pausedRef = useRef(false);
-  const [paused, setPaused] = useState(false);
+  // El reloj arranca en pausa: empieza cuando el jugador cierra la ayuda.
+  const pausedRef = useRef(true);
+  const [paused, setPaused] = useState(true);
+  const [callout, setCallout] = useState<{ id: number; text: string; kind: string } | null>(null);
   const [help, setHelp] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const [rightOpen, setRightOpen] = useState(() => window.innerWidth > 640);
@@ -113,7 +121,11 @@ export default function Lander({ onEnd, onHome }: Props) {
     s.landingAssist = !s.landingAssist;
     if (!s.landingAssist) s.assist = 'vertical';
   };
-  const act = (a: LunaAction) => say(lunaAction(sRef.current, a));
+  const [muted, setMutedState] = useState(isMuted);
+  const toggleMute = () => { unlockAudio(); setMuted(!isMuted()); setMutedState(isMuted()); };
+  const move = (steps: number) => { redesignate(sRef.current, steps); playClick(); };
+  const act = (a: LunaAction) => { const msg = lunaAction(sRef.current, a); if (!msg) playClick(); say(msg); };
+  const closeHelp = () => { setHelp(false); if (sRef.current.t === 0) setPause(false); };
   const toggleMap = () => { viewRef.current.map = !viewRef.current.map; };
 
   useEffect(() => {
@@ -122,10 +134,12 @@ export default function Lander({ onEnd, onHome }: Props) {
       const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
       if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
       if (e.repeat) return;
+      unlockAudio();
       keys.current.add(k);
       const s = sRef.current;
       if (k === 'Escape') { setPause(!pausedRef.current); return; }
-      if (k === 'h') { setHelp((v) => !v); return; }
+      if (k === 'h') { if (s.t === 0 && pausedRef.current) closeHelp(); else setHelp((v) => !v); return; }
+      if (s.t === 0 && pausedRef.current && s.phase === 'descenso' && k !== 'Escape') closeHelp();
       // Las decisiones de la base se pueden tomar con el reloj en pausa.
       if (pausedRef.current && s.phase === 'descenso') return;
       if (k === '.') stepWarp(1);
@@ -136,8 +150,13 @@ export default function Lander({ onEnd, onHome }: Props) {
         else if (k === 't') cycleAssist();
         else if (k === 'l') toggleLandingAssist();
         else if (k === 'm') toggleMap();
+        // Con el asistente de alunizaje, las flechas mueven el punto designado (como el LPD de Apollo).
+        else if (s.landingAssist && (k === 'ArrowLeft' || k === 'a')) move(-1);
+        else if (s.landingAssist && (k === 'ArrowRight' || k === 'd')) move(1);
+        else if (k === 'n') toggleMute();
       } else {
-        if (k === 'g') act('paneles');
+        if (k === 'n') toggleMute();
+        else if (k === 'g') act('paneles');
         else if (k === 'i') act('perforar');
         else if (k === 'o') act('oxigeno');
         else if (k === 'b') act('refugio');
@@ -149,14 +168,15 @@ export default function Lander({ onEnd, onHome }: Props) {
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
-    return () => { setFlightContext(null); window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
+    window.addEventListener('pointerdown', unlockAudio);
+    return () => { setFlightContext(null); setEngine(0); window.removeEventListener('pointerdown', unlockAudio); window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
-    let raf = 0, last = performance.now(), hudAt = 0, pathAt = 0, time = 0;
+    let raf = 0, last = performance.now(), hudAt = 0, pathAt = 0, time = 0, seen = sRef.current.events.length, landed = false;
     const scale = Math.min(1.5, window.devicePixelRatio || 1);
     const resize = () => {
       canvas.width = Math.round(canvas.clientWidth * scale);
@@ -180,7 +200,7 @@ export default function Lander({ onEnd, onHome }: Props) {
           let turn = 0;
           if (k.has('a') || k.has('ArrowLeft')) turn -= 1;
           if (k.has('d') || k.has('ArrowRight')) turn += 1;
-          if (turn !== 0) s.landingAssist = false;
+          if (s.landingAssist) turn = 0;
           if (warpRef.current > maxWarpLuna(s)) warpRef.current = maxWarpLuna(s);
           const simT = real * warpRef.current;
           const dtMax = s.throttle > 0 || localFrame(s).alt < 3000 ? 0.05 : 0.5;
@@ -206,6 +226,23 @@ export default function Lander({ onEnd, onHome }: Props) {
           }
         }
         lunaObjectives(s);
+      }
+      // Sonido: el motor sigue al empuje; cada aviso nuevo tiene su tono.
+      setEngine(s.phase === 'descenso' && !s.ended && !pausedRef.current && s.prop > 0 ? s.throttle : 0);
+      if (s.touchdown && !landed) {
+        landed = true;
+        if (s.touchdown.safe) { playTouchdown(); playCue('ok'); } else playCrash();
+      } else if (s.events.length > seen && !(s.touchdown && s.events[s.events.length - 1].t <= s.touchdown.t)) {
+        playCue(s.events[s.events.length - 1].kind);
+      }
+      if (s.events.length > seen) {
+        const e = s.events[s.events.length - 1];
+        seen = s.events.length;
+        if (e.t <= (s.touchdown?.t ?? Infinity)) {
+          const id = now;
+          setCallout({ id, text: e.text, kind: e.kind });
+          window.setTimeout(() => setCallout((c) => (c?.id === id ? null : c)), 5200);
+        }
       }
       if (s.phase === 'descenso' && now - pathAt > 120) {
         pathAt = now;
@@ -248,6 +285,7 @@ export default function Lander({ onEnd, onHome }: Props) {
         {descent && <button className="btn tiny" onClick={toggleMap} title="Key M">{viewRef.current.map ? 'Lander view' : 'Map'}</button>}
         <button className={`btn tiny ${paused ? 'on' : ''}`} onClick={() => setPause(!paused)} title="Key Esc">{paused ? 'Resume' : 'Pause'}</button>
         <button className="btn tiny" onClick={() => setHelp((v) => !v)} title="Key H">Controls</button>
+        <button className="btn tiny" onClick={toggleMute} title="Key N" aria-pressed={!muted}>{muted ? 'Sound off' : 'Sound on'}</button>
         <button className="btn warn" onClick={finish}>End mission</button>
       </div>
 
@@ -261,6 +299,8 @@ export default function Lander({ onEnd, onHome }: Props) {
             <Row k="Thrust angle" v={`${n(hud.pitch)}° from vertical`} />
             <h4>Targeting</h4>
             <Row k="Distance to site" v={dist(hud.site)} />
+            {hud.ignition !== null && <Row k="Ignition in" v={hud.ignition > 0 ? clock(hud.ignition) : 'now'} tone={hud.ignition > 15 ? undefined : 'bad'} />}
+            {hud.alt < ASSIST_ALT && <Row k="Landing point" v={`${dist(Math.abs(hud.targetDist))} ${hud.targetDist >= 0 ? 'ahead' : 'behind'} · ${hud.targetRough ? 'boulders' : 'clear'}`} tone={hud.targetRough ? 'bad' : 'ok'} />}
             <Row k="Braking distance" v={isFinite(hud.braking) ? dist(hud.braking) : hud.prop > 0 ? 'not enough propellant' : 'no propellant'} tone={!isFinite(hud.braking) || hud.braking > hud.site && hud.throttle === 0 && hud.vh > 100 ? 'bad' : undefined} />
             <Row k="Impact if engine off" v={hud.impactMiss === null ? 'stays in orbit' : `${dist(Math.abs(hud.impactMiss))} ${hud.impactMiss > 0 ? 'short' : 'long'}`} />
             <p className="note">{hint(hud)}</p>
@@ -308,6 +348,7 @@ export default function Lander({ onEnd, onHome }: Props) {
             <Gauge label="Propellant" value={`${n(hud.prop)} kg`} pct={(hud.prop / PROP0) * 100} low={12} />
             <Row k="Delta-v left" v={`${n(hud.dv)} m/s`} />
             <Row k="Thrust/weight" v={n(hud.twr, 2)} />
+            {hud.alt < ASSIST_ALT && <Row k="Hover time left" v={`${n(hud.hover)} s`} tone={hud.hover < 60 ? 'bad' : undefined} />}
             <h4>Assistance</h4>
             <div className="seg">
               {(['manual', 'frenado', 'vertical'] as Assist[]).map((m) => (
@@ -317,6 +358,12 @@ export default function Lander({ onEnd, onHome }: Props) {
             <button className={`btn tiny wide ${hud.landingAssist ? 'on' : ''}`} disabled={!hud.canAssist && !hud.landingAssist} onClick={toggleLandingAssist} title="Key L">
               {hud.landingAssist ? 'Landing assist active' : hud.canAssist ? 'Landing assist' : 'Landing assist (below 2 km)'}
             </button>
+            {hud.landingAssist && (
+              <div className="seg">
+                <button className="btn tiny" onClick={() => move(-1)} title="Key ←">← Move back</button>
+                <button className="btn tiny" onClick={() => move(1)} title="Key →">Move ahead →</button>
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -337,13 +384,14 @@ export default function Lander({ onEnd, onHome }: Props) {
       </div>
 
       {toast && <div className="hud toast">{toast}</div>}
+      {callout && descent && !help && <div key={callout.id} className={`hud lunar-callout ${callout.kind}`}>{callout.text}</div>}
 
       {paused && !hud.ended && !help && (
         <div className="hud prompt">Paused · press <span className="keycap">Esc</span> to resume</div>
       )}
 
       {help && (
-        <div className="hud help" onClick={() => setHelp(false)}>
+        <div className="hud help" onClick={closeHelp}>
           <h3>Lunar landing controls</h3>
           <div className="help-grid">
             <span className="keycap">W / S</span><span>Throttle up · down</span>
@@ -351,13 +399,15 @@ export default function Lander({ onEnd, onHome }: Props) {
             <span className="keycap">A / D</span><span>Tilt the thrust back · forward (manual)</span>
             <span className="keycap">T</span><span>Assistance: manual, braking, vertical</span>
             <span className="keycap">L</span><span>Landing assist (below 2 km)</span>
+            <span className="keycap">← / →</span><span>With the landing assist: move the landing point off the boulders</span>
             <span className="keycap">, / .</span><span>Time warp</span>
             <span className="keycap">M</span><span>Map of the Moon</span>
             <span className="keycap">G · I · O · B</span><span>On the surface: panels, drill, oxygen, shelter</span>
+            <span className="keycap">N</span><span>Sound on · off</span>
             <span className="keycap">Esc</span><span>Pause</span>
           </div>
-          <p className="muted">The Moon has no air: no drag, no parachute, no heat shield. Your engine must cancel almost 1,700 m/s of orbital speed. Coast until the distance to the site matches the braking distance, then fire at full throttle. Touch down below {SAFE_VV} m/s.</p>
-          <button className="btn primary">Got it</button>
+          <p className="muted">The Moon has no air: no drag, no parachute, no heat shield. Your engine must cancel almost 1,700 m/s of orbital speed. Coast until the ignition countdown reaches zero, then fire at full throttle. Below 2 km the radar paints boulders red and clear ground green: the computer aims at the ice site, which is strewn with boulders, so move the landing point before the propellant runs out. Touch down below {SAFE_VV} m/s.</p>
+          <button className="btn primary">{hud.t === 0 ? 'Start the descent' : 'Got it'}</button>
         </div>
       )}
 
