@@ -15,6 +15,7 @@ import Report from './Report';
 import { BadLinkNotice, CrewStrip, FlightBoard, ShareButton, SharedBanner } from './Team';
 import { loadCrew, saveCrew } from './crew';
 import { GuestScreen, RoomCard, RoomPill } from './room/RoomUI';
+import GuestMissionControl from './room/GuestMissionControl';
 import { normalizeCode } from './room/protocol';
 import { roomJoin, roomPublishIdle, roomState, useRoom } from './room/room';
 import { RankEntry, addEntry, entryFromShare, loadRanking, newId, saveRanking } from './ranking';
@@ -217,7 +218,7 @@ export default function App() {
   }
   // Un invitado ve la sala en lugar del juego propio; al salir vuelve a su partida.
   if (room.role === 'guest') {
-    return <GuestScreen />;
+    return <><GuestScreen /><GuestMissionControl /></>;
   }
   return (
     <>

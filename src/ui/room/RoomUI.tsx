@@ -59,12 +59,12 @@ function Notes({ room, onSend }: { room: RoomState; onSend: (t: string) => void 
   return (
     <div className="room-notes">
       <div className="room-notes-list">
-        {room.notes.length === 0 && <p className="muted small">Send a short note to your crew: a call, a warning, an idea for the craft.</p>}
+        {room.notes.length === 0 && <p className="muted small">Chat with your crew: a call, a warning, an idea for the craft.</p>}
         {room.notes.slice(-6).map((x, i) => <p key={`${x.at}-${i}`}><b>{x.from}</b> {x.text}</p>)}
       </div>
       <div className="room-notes-send">
         <input
-          value={text} maxLength={NOTE_MAX} placeholder="Note to the crew" aria-label="Note to the crew"
+          value={text} maxLength={NOTE_MAX} placeholder="Message the crew" aria-label="Message the crew"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') send(); }}
           onKeyUp={(e) => e.stopPropagation()}
@@ -282,7 +282,7 @@ function CraftPreview({ room }: { room: RoomState }) {
 
 const IDLE_TEXT: Record<string, string> = {
   home: 'The pilot is choosing a mission.',
-  lab: 'The pilot is in the Lab. This is the craft so far: send a note if you would change something.',
+  lab: 'The pilot is in the Lab. This is the craft so far: say in the chat if you would change something.',
   report: 'The flight is over. The pilot is reading the mission report.',
   other: 'The pilot is on a screen that cannot be followed live yet. Stand by.',
 };
@@ -396,7 +396,7 @@ export function GuestScreen() {
           <p className="muted small">{mySeat ? STATIONS.find((s) => s.id === mySeat)?.does : 'Without a station you watch the flight as an observer. You can change at any time.'}</p>
           <div className="room-lobby-grid">
             <div><h3>Crew</h3><Roster room={room} /></div>
-            <div><h3>Notes</h3><Notes room={room} onSend={roomGuestNote} /></div>
+            <div><h3>Chat</h3><Notes room={room} onSend={roomGuestNote} /></div>
           </div>
           {room.idle?.screen === 'lab' && <CraftPreview room={room} />}
           <div className="report-actions"><button className="btn ghost" onClick={roomLeave}>Leave the room</button></div>
@@ -509,7 +509,7 @@ export function GuestScreen() {
             </div>
           </>
         )}
-        <h4>Notes</h4>
+        <h4>Chat</h4>
         <Notes room={room} onSend={roomGuestNote} />
       </div>
 
