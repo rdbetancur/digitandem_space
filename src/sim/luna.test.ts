@@ -1,22 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import {
-  FLARE, FLARE_WARN, Luna, MU_MOON, R_MOON, SAFE_VV, SHADOW, SITE_RADIUS, SURVIVE_H,
-  brakingDistance, createLuna, localFrame, lunaAction, lunaObjectives, lunaReport, predictPath, setThrottle,
+  ALT0, FLARE, FLARE_WARN, HIGH_GATE, Luna, THRUST, MU_MOON, R_MOON, SAFE_VV, SHADOW, SITE_RADIUS, SURVIVE_H,
+  brakingDistance, canAssist, createLuna, mass, localFrame, lunaAction, lunaObjectives, lunaReport, predictPath, setThrottle,
   siteDistance, stepDescent, stepSurface,
 } from './luna';
 
-/** Piloto de prueba: espera, frena en retrógrado y baja vertical con el asistente. */
-function pilot(s: Luna, margin = 1) {
+interface Trace { maxSink: number; vhAtAssist: number | null; altAtStop: number | null }
+
+/**
+ * Piloto de prueba, como jugaría una persona: espera, frena a pleno empuje con el asistente
+ * de frenado y, debajo de 2 km, conecta el asistente de alunizaje.
+ */
+function pilot(s: Luna, margin = 1, dtBurn = 0.05): Trace {
   let braking = false;
-  for (let i = 0; i < 200000 && s.phase === 'descenso' && !s.ended; i++) {
-    const { alt } = localFrame(s);
+  const tr: Trace = { maxSink: 0, vhAtAssist: null, altAtStop: null };
+  for (let i = 0; i < 400000 && s.phase === 'descenso' && !s.ended; i++) {
+    const { alt, vv, vh } = localFrame(s);
     if (!braking && siteDistance(s) <= brakingDistance(s) * margin) braking = true;
     if (braking) {
-      if (alt > 1500) { s.assist = 'frenado'; setThrottle(s, 1); }
-      else s.landingAssist = true;
+      if (canAssist(s)) {
+        if (!s.landingAssist) tr.vhAtAssist = vh;
+        s.landingAssist = true;
+      } else if (Math.abs(vh) > 3) { s.assist = 'frenado'; setThrottle(s, 1); }
+      else { if (tr.altAtStop === null) tr.altAtStop = alt; setThrottle(s, 0); }
+      tr.maxSink = Math.max(tr.maxSink, -vv);
     }
-    stepDescent(s, braking ? 0.05 : 0.5);
+    stepDescent(s, braking ? dtBurn : 0.5);
   }
+  return tr;
 }
 
 function land(): Luna {
@@ -29,9 +40,9 @@ describe('lunar descent', () => {
   it('starts in a circular orbit that stays up without thrust', () => {
     const s = createLuna();
     const v0 = Math.hypot(s.v.x, s.v.y);
-    expect(v0).toBeCloseTo(Math.sqrt(MU_MOON / (R_MOON + 20e3)), 6);
+    expect(v0).toBeCloseTo(Math.sqrt(MU_MOON / (R_MOON + ALT0)), 6);
     for (let i = 0; i < 6600; i++) stepDescent(s, 1);
-    expect(localFrame(s).alt).toBeGreaterThan(19e3);
+    expect(localFrame(s).alt).toBeGreaterThan(ALT0 - 1e3);
     expect(s.ended).toBeNull();
     expect(predictPath(createLuna()).impact).toBeNull();
   });
@@ -44,6 +55,41 @@ describe('lunar descent', () => {
     for (let i = 0; i < 100000 && !s.ended && s.phase === 'descenso'; i++) stepDescent(s, 0.25);
     expect(s.ended).toBe('choque');
     expect(s.touchdown!.vv).toBeGreaterThan(SAFE_VV);
+  });
+
+  it('thrust pushes along the lander attitude with a = F / m', () => {
+    // Retrógrado (−90°): frena la velocidad horizontal.
+    const a = createLuna();
+    a.assist = 'manual'; a.pitch = -Math.PI / 2; setThrottle(a, 1);
+    const vh0 = localFrame(a).vh;
+    const m0 = mass(a);
+    stepDescent(a, 0.1);
+    expect(vh0 - localFrame(a).vh).toBeCloseTo((THRUST / m0) * 0.1, 2);
+    // Vertical (0°): empuja hacia arriba; en órbita circular la gravedad está compensada.
+    const b = createLuna();
+    b.assist = 'manual'; b.pitch = 0; setThrottle(b, 1);
+    stepDescent(b, 0.1);
+    expect(localFrame(b).vv).toBeCloseTo((THRUST / m0) * 0.1, 2);
+  });
+
+  it('the result does not depend on the time step', () => {
+    const a = createLuna(), b = createLuna();
+    pilot(a, 1, 0.05);
+    pilot(b, 1, 0.01);
+    expect(a.touchdown!.safe && b.touchdown!.safe).toBe(true);
+    expect(Math.abs(a.dvUsed - b.dvUsed)).toBeLessThan(5);
+    expect(Math.abs(a.touchdown!.dist - b.touchdown!.dist)).toBeLessThan(200);
+  });
+
+  it('braking ends near the high gate instead of diving at 80 m/s', () => {
+    // Antes el asistente dejaba caer la nave a 80 m/s y seguía con 200 m/s de horizontal a 2 km.
+    const s = createLuna();
+    const tr = pilot(s);
+    expect(tr.maxSink).toBeLessThan(60);
+    expect(Math.abs(tr.vhAtAssist!)).toBeLessThan(80);
+    // Si la horizontal se acaba antes, que sea cerca del portón alto, no a 6 km.
+    if (tr.altAtStop !== null) expect(tr.altAtStop).toBeLessThan(HIGH_GATE + 1500);
+    expect(s.touchdown!.safe).toBe(true);
   });
 
   it('a scripted lander reaches the surface safely near the site', () => {

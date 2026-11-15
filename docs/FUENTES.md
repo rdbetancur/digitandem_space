@@ -34,12 +34,17 @@ Simplifications of this mission:
 
 - **Lander.** Masses and thrust (2,600 kg dry, 3,400 kg propellant, 24 kN) are game values of the
   right order for a small lander. The sim is a point mass in a single plane (a polar orbit), with
-  a smooth, round Moon; the crater drawn next to the site is decoration. The Moon's rotation
-  (4.6 m/s at the equator, almost zero at the pole) is ignored.
+  a smooth, round Moon; the craters, distant ridges and the Earth on the horizon are decoration.
+  The Moon's rotation (4.6 m/s at the equator, almost zero at the pole) is ignored. The
+  starting orbit (15 km) and the "high gate" where braking ends (about 1.5 km) follow the
+  Apollo descent profile described in the Apollo Lunar Surface Journal; the exact values are
+  rounded for the game.
+- **Camera.** The distance on screen between the lander and the ground grows with the logarithm
+  of the altitude, so the ground keeps getting closer during the whole descent.
 - **Braking distance.** Computed with the rocket equation for horizontal braking at full thrust,
   plus a small margin for the thrust that goes into holding up the fall.
-- **Assists.** "Braking" splits the thrust between holding a descent rate that grows with altitude
-  and cancelling horizontal speed. The landing assist works only below 2 km, like a landing radar.
+- **Assists.** "Braking" splits the thrust between cancelling horizontal speed and a descent rate
+  chosen so the lander reaches the high gate just as the horizontal speed runs out. The landing assist works only below 2 km, like a landing radar.
 - **Base.** Power, oxygen, water, temperature and dose are simple balances per hour. Panel power
   (8 kW), battery (30 kWh), loads, drill rate (1 kg of water per hour) and the shelter factor (a
   tenth) are game values. The 12 h shadow behind a ridge and the solar storm (8 h at 40 mSv/h

@@ -26,8 +26,8 @@ export const ISP = 311;
 /** Velocidad máxima de giro de la nave (rad/s). */
 const TURN_RATE = (45 * Math.PI) / 180;
 
-/** Altura de la órbita inicial (m). Órbita polar circular. */
-export const ALT0 = 20e3;
+/** Altura de la órbita inicial (m): donde Apollo empezaba el descenso propulsado. Órbita polar circular. */
+export const ALT0 = 15e3;
 /** El sitio de alunizaje está 40° adelante en la órbita. */
 export const SITE_ANGLE = (40 * Math.PI) / 180;
 /** Límites de un contacto seguro. */
@@ -130,7 +130,7 @@ export function createLuna(): Luna {
     dvUsed: 0, maxSpeedDown: 0, touchdown: null, ended: null,
     hours: 0, battery: 20000, o2: O2_0, water: 0, waterTotal: 0, o2Made: 0, temp: CABIN_T, dose: 0, flareDose: 0,
     panels: false, drill: false, electro: false, shelter: false, minBattery: 20000,
-    events: [{ t: 0, text: 'Polar orbit at 20 km. The landing site is 40° ahead, on the rim of a crater near the south pole.', kind: 'info' }],
+    events: [{ t: 0, text: 'Polar orbit at 15 km, the altitude where Apollo began its powered descent. The landing site is 40° ahead, on the rim of a crater near the south pole.', kind: 'info' }],
     flags: {},
   };
 }
@@ -196,13 +196,15 @@ export function predictPath(s: Luna, maxT = 7000): { points: { x: number; y: num
   return { points, impact: null, impactT: Infinity };
 }
 
+/** Altura a la que el frenado debería terminar: el "portón alto" de los alunizajes Apollo (m). */
+export const HIGH_GATE = 1500;
+
 /**
- * Guiado de frenado: reparte el empuje entre sostener la caída (una velocidad de descenso
- * que crece con la altura) y anular la velocidad horizontal. accel es la aceleración disponible.
+ * Guiado: reparte el empuje entre llevar la velocidad vertical a target (m/s, negativa hacia
+ * abajo) y anular la velocidad horizontal. accel es la aceleración disponible.
  */
-function guidance(s: Luna, accel: number, sinkPerM: number, sinkMax: number, gain: number) {
+function guidance(s: Luna, accel: number, target: number, gain: number) {
   const { vv, vh, alt, rm } = localFrame(s);
-  const target = -Math.max(1.2, Math.min(sinkMax, alt * sinkPerM));
   // Gravedad menos el "alivio" centrífugo de la velocidad horizontal.
   const gEff = MU_MOON / (rm * rm) - (vh * vh) / rm;
   const av = Math.max(0, Math.min(accel, gEff + gain * (target - vv)));
@@ -218,7 +220,8 @@ function guidance(s: Luna, accel: number, sinkPerM: number, sinkMax: number, gai
 /** Asistente de alunizaje: baja a una velocidad segura según la altura y anula la deriva. */
 function landingCommand(s: Luna): { pitch: number; throttle: number } {
   const amax = Math.max(1e-6, maxAccel(s));
-  const g = guidance(s, amax, 1 / 8, 40, 1.2);
+  const { alt } = localFrame(s);
+  const g = guidance(s, amax, -Math.max(1.2, Math.min(25, alt / 10)), 1.2);
   return { pitch: g.pitch, throttle: Math.min(1, g.accel / amax) };
 }
 
@@ -228,10 +231,15 @@ function assistTarget(s: Luna): number | null {
   if (s.assist === 'vertical') return 0;
   if (s.assist === 'frenado') {
     const a = maxAccel(s) * s.throttle;
-    const { vv, vh } = localFrame(s);
+    const { vv, vh, alt } = localFrame(s);
     // Con el motor apagado apunta en contra de la velocidad, listo para encender.
     if (a <= 0) return Math.hypot(vv, vh) > 0.5 ? Math.atan2(-vh, -vv) : 0;
-    return guidance(s, a, 1 / 40, 80, 0.08).pitch;
+    // Baja justo lo necesario para llegar al portón alto cuando la velocidad horizontal se acaba.
+    // Tiempo de frenado con la ecuación del cohete: la nave se aligera mientras frena.
+    const ve = ISP * G0;
+    const tGo = Math.max(5, ((mass(s) * ve) / (THRUST * s.throttle)) * (1 - Math.exp(-Math.abs(vh) / ve)) / 0.95);
+    const sink = Math.max(2, Math.min(60, (alt - HIGH_GATE) / tGo));
+    return guidance(s, a, -sink, 0.15).pitch;
   }
   return null;
 }
@@ -245,6 +253,7 @@ export function setThrottle(s: Luna, x: number) { s.throttle = Math.max(0, Math.
 export function maxWarpLuna(s: Luna): number {
   if (s.phase !== 'descenso') return 1;
   const { alt } = localFrame(s);
+  if (alt < 1000) return 1;
   if (alt < 3000) return 2;
   if (s.throttle > 0) return 5;
   // Cerca del punto de frenado el reloj se frena solo, para no pasarse del sitio.

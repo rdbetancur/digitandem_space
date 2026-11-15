@@ -53,7 +53,7 @@ function hint(h: Hud): string {
   if (h.phase === 'descenso') {
     if (h.alt < 2000 && !h.landingAssist) return 'Below 2 km the radar sees the ground: press L for the landing assist, or use Vertical and keep the descent rate near a tenth of your altitude.';
     if (h.landingAssist) return 'The landing assist is holding a safe descent rate and cancelling drift. Watch the propellant.';
-    if (h.throttle > 0) return 'Keep braking. The Braking assist splits thrust between stopping the fall and killing horizontal speed.';
+    if (h.throttle > 0) return 'Keep braking. The Braking assist aims to stop the horizontal speed just as you reach about 1.5 km. If it runs out higher up, lower the throttle.';
     if (h.site > h.braking * 1.3) return 'Coast toward the site (speed up time with ▶). Start braking when Distance to site gets close to Braking distance.';
     return 'Now: full throttle (Z) with the Braking assist. There is no air to slow you down, only the engine.';
   }
