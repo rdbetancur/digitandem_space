@@ -217,7 +217,6 @@ select, input[type='text'], input:not([type]) {
   .lab-col { overflow: visible; }
   .lab-col.view { min-height: 360px; order: -1; }
   .report-grid { grid-template-columns: 1fr; }
-  .hud-right { display: none; }
   .science { left: 12px; bottom: 210px; }
 }
 
@@ -238,4 +237,42 @@ select, input[type='text'], input:not([type]) {
 @media (max-width: 980px) {
   .atlas-side { left: 12px; right: 12px; top: auto; bottom: 12px; width: auto; max-height: 46%; }
   .atlas-foot { display: none; }
+}
+
+/* ---------- Vuelo: panel derecho plegable (aporte de Bruno) ---------- */
+.hud-right-toggle { display: none; }
+@media (max-width: 980px) {
+  .hud-right { width: 220px; max-height: calc(100% - 82px); overflow-y: auto; z-index: 4; }
+  .hud-right-toggle { display: block; margin-bottom: 8px; }
+  .hud-right.plegado { width: auto; padding: 6px; }
+  .hud-right.plegado > :not(.hud-right-toggle) { display: none; }
+  .hud-right.plegado .hud-right-toggle { margin-bottom: 0; }
+}
+
+/* ---------- Primer vuelo y explicaciones ---------- */
+.flight-guide { top: 70px; left: 50%; transform: translateX(-50%); width: min(420px, calc(100% - 560px)); background: rgba(10, 15, 26, 0.96); }
+.flight-guide-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--accent-2); font-size: 12px; }
+.flight-guide h3 { margin: 8px 0; font-size: 17px; }
+.flight-guide p { font-size: 13px; line-height: 1.5; }
+.flight-guide .muted { margin-top: 6px; }
+.term { position: relative; cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
+.term:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
+.term-tip { display: none; position: absolute; left: 0; bottom: calc(100% + 6px); width: min(230px, 65vw); padding: 8px 10px; background: #101b30; border: 1px solid var(--accent-2); border-radius: 8px; color: var(--text); font-size: 12px; font-weight: normal; line-height: 1.45; white-space: normal; z-index: 8; pointer-events: none; }
+.term:hover > .term-tip, .term:focus > .term-tip { display: block; }
+.lab .term-tip { bottom: auto; top: calc(100% + 6px); }
+@media (max-width: 980px) {
+  .flight-guide { max-height: calc(100% - 100px); overflow-y: auto; z-index: 3; }
+  .flight .hud-left { max-height: max(70px, calc(100% - 300px)); overflow-y: auto; }
+  .guide-enabled .events { display: none; }
+}
+@media (max-width: 640px) {
+  .flight .hud-top { flex-wrap: wrap; justify-content: center; gap: 5px; width: calc(100% - 24px); white-space: normal; }
+  .flight .hud-left, .flight .hud-right { top: 124px; }
+  .flight .hud-left { width: 210px; max-height: calc(100% - 340px); overflow-y: auto; }
+  .flight .hud-right { max-height: calc(100% - 136px); }
+  .flight-guide { top: auto; bottom: 12px; left: 12px; right: 12px; transform: none; width: auto; max-height: 190px; }
+  .hud-right:not(.plegado) ~ .flight-guide { display: none; }
+  .guide-enabled .hud-bottom-left { bottom: 212px; max-height: 180px; overflow-y: auto; }
+  .guide-enabled .hud-left { max-height: max(70px, calc(100% - 540px)); }
+  .flight .help { max-height: calc(100% - 24px); overflow-y: auto; }
 }

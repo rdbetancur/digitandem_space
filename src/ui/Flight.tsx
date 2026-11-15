@@ -10,6 +10,8 @@ import { Mission, objectivesDone } from '../sim/missions';
 import { CONTEXTS, REPEAT_FACTOR, SCIENCE_VALUE, contextOf } from '../sim/science';
 import { Design } from '../sim/vehicle';
 import { Camera, Particle, fitZoom, render } from './renderer';
+import FlightGuide from './FlightGuide';
+import Term from './Term';
 
 const WARPS = [1, 2, 5, 10, 50, 100, 1000];
 const SAS_LABEL: Record<Sas, string> = { mantener: 'Mantener', prograda: 'Prograda', retrograda: 'Retrógrada' };
@@ -91,11 +93,14 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
   const particles = useRef<Particle[]>([]);
   const mapMode = useRef(false);
   const [hud, setHud] = useState<Hud>(() => snapshot(flightRef.current, mission, 1));
-  const [help, setHelp] = useState(true);
+  const [help, setHelp] = useState(mission.id !== 'cubesat');
+  const [guideOpen, setGuideOpen] = useState(mission.id === 'cubesat');
   const [toast, setToast] = useState<string | null>(null);
   const [sciOpen, setSciOpen] = useState(false);
   const pausedRef = useRef(false);
   const [paused, setPaused] = useState(false);
+  // En teléfonos empieza cerrado para no tapar la navegación.
+  const [rightOpen, setRightOpen] = useState(() => window.innerWidth > 640);
   const mat = MATERIALS[design.material];
   const togglePause = () => { pausedRef.current = !pausedRef.current; setPaused(pausedRef.current); };
   const toggleDeploy = () => {
@@ -287,7 +292,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
   const finish = () => { endFlight(f, 'usuario'); onEnd(f); };
 
   return (
-    <div className="flight">
+    <div className={`flight ${guideOpen && !help ? 'guide-enabled' : ''}`}>
       <canvas ref={canvasRef} className="flight-canvas" />
 
       <div className="hud hud-top">
@@ -302,6 +307,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         <button className="btn tiny" onClick={toggleMap} title="Tecla M">{mapMode.current ? 'Vista nave' : 'Mapa'}</button>
         <button className={`btn tiny ${paused ? 'on' : ''}`} onClick={togglePause} title="Tecla Esc">{paused ? 'Continuar' : 'Pausa'}</button>
         <button className="btn tiny" onClick={() => setHelp((v) => !v)} title="Tecla H">Controles</button>
+        <button className={`btn tiny ${guideOpen ? 'on' : ''}`} onClick={() => { setGuideOpen((v) => !v); setHelp(false); }} aria-pressed={guideOpen}>Guía</button>
         <button className="btn warn" onClick={finish}>Terminar vuelo</button>
       </div>
 
@@ -319,7 +325,10 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         <Gauge label="Aceleración" value={`${n(hud.g, 1)} g`} pct={gPct} limit={tested.vibracion ? `límite ${n(mat.gLimit)}` : 'límite sin ensayar'} hideLimit={!tested.vibracion} />
       </div>
 
-      <div className="hud panel hud-right">
+      <div className={`hud panel hud-right ${rightOpen ? '' : 'plegado'}`}>
+        <button className="btn tiny wide hud-right-toggle" onClick={() => setRightOpen((v) => !v)} aria-expanded={rightOpen}>
+          {rightOpen ? 'Ocultar panel ▴' : 'Misión y propulsión ▾'}
+        </button>
         {mission.objetivos.length > 0 && (
           <>
             <h4>{mission.nombre}</h4>
@@ -411,7 +420,9 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         <div className="hud prompt">En pausa · pulsa <span className="keycap">Esc</span> para continuar</div>
       )}
 
-      {!paused && !hud.launched && !hud.ended && !help && (
+      {guideOpen && !help && <FlightGuide hud={hud} paused={paused} autopilot={hud.autopilot} onClose={() => setGuideOpen(false)} />}
+
+      {!paused && !hud.launched && !hud.ended && !help && !guideOpen && (
         <div className="hud prompt">Pulsa <span className="keycap">Espacio</span> para encender motores</div>
       )}
 
@@ -448,7 +459,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
 }
 
 function Row({ k, v, tone }: { k: string; v: string; tone?: 'ok' | 'bad' }) {
-  return <div className={`row ${tone ?? ''}`}><span>{k}</span><b>{v}</b></div>;
+  return <div className={`row ${tone ?? ''}`}><Term text={k} /><b>{v}</b></div>;
 }
 
 function Gauge({ label, value, pct, limit, plain, invert, hideLimit }: {
@@ -458,7 +469,7 @@ function Gauge({ label, value, pct, limit, plain, invert, hideLimit }: {
   const tone = plain ? (invert && p < 15 ? 'bad' : '') : hideLimit ? '' : p > 85 ? 'bad' : p > 65 ? 'warn' : '';
   return (
     <div className="gauge">
-      <div className="gauge-head"><span>{label}</span><b>{value}</b></div>
+      <div className="gauge-head"><Term text={label} /><b>{value}</b></div>
       <div className={`bar ${tone}`}><i style={{ width: `${hideLimit ? Math.min(p, 100) * 0.6 : p}%` }} /></div>
       {limit && <div className="gauge-limit">{limit}</div>}
     </div>
