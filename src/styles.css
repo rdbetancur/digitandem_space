@@ -331,3 +331,16 @@ select, input[type='text'], input:not([type]) {
   .lunar-map .hud-left, .lunar-map .hud-right { display: none; }
   .lunar-map .lunar-map-readout { display: block; top: 122px; left: 12px; right: 12px; text-align: center; font-size: 13px; }
 }
+
+/* ---------- Lunar descent: mission control callouts ---------- */
+.lunar-callout { top: 21%; left: 50%; transform: translateX(-50%); max-width: min(620px, calc(100% - 24px)); padding: 10px 18px; border-radius: 10px; text-align: center; font-size: 15px; font-weight: 600; letter-spacing: 0.02em; color: #dbe9ff; background: rgba(8, 14, 26, 0.82); border: 1px solid rgba(120, 180, 255, 0.5); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55); pointer-events: none; animation: lunar-callout 5.2s ease-out both; z-index: 5; }
+.lunar-callout.warn { color: #ffe0a8; border-color: rgba(255, 179, 71, 0.75); background: rgba(40, 26, 8, 0.86); }
+.lunar-callout.bad { color: #ffd0c8; border-color: rgba(255, 107, 94, 0.85); background: rgba(48, 12, 10, 0.88); }
+.lunar-callout.ok { color: #c9f5df; border-color: rgba(90, 220, 160, 0.7); }
+@keyframes lunar-callout { 0% { opacity: 0; transform: translateX(-50%) scale(1.12); } 6% { opacity: 1; transform: translateX(-50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; } }
+.lander .seg + .seg, .lander .btn.wide + .seg { margin-top: 6px; }
+/* The event log moves to the corner so it does not cover the landing spot. */
+@media (min-width: 901px) {
+  .lander .events { bottom: 12px; left: 12px; transform: none; align-items: flex-start; width: min(360px, 30vw); }
+  .lander .event { text-align: left; }
+}
