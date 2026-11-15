@@ -1,6 +1,9 @@
 // Dibujo de la misión lunar en Canvas 2D: descenso (vista cercana y mapa) y base en la superficie.
 
 import { Luna, R_MOON, SITE_ANGLE, FLARE, flareActive, localFrame, siteDistance, sunlit } from '../sim/luna';
+import { terrainRadius, terrainElevation } from '../sim/lunarTerrain';
+import { drawLunarMap } from './lunarMap';
+import { lunarEnvironment } from '../sim/lunarEnvironment';
 
 type Pt = { x: number; y: number };
 
@@ -9,9 +12,6 @@ export const GROUND_FRAC = 0.8;
 /** Altura de la nave en el dibujo (m) y posición de las patas en el sprite (fracción). */
 const LANDER_H = 9;
 const FOOT = 14 / 40;
-/** Cráter de sombra permanente: a 3 km del sitio, 1,6 km de radio (decorado). */
-const CRATER_OFFSET = 3000;
-const CRATER_R = 1600;
 /** Altura que cubre la escala logarítmica de la cámara (m). */
 const CAM_TOP = 20000;
 const CAM_K = 5;
@@ -124,24 +124,7 @@ export function drawDescent(ctx: CanvasRenderingContext2D, w: number, h: number,
   sky(ctx, w, h);
   const fr = localFrame(s);
   if (view.map) {
-    const ppm = (Math.min(w, h) * 0.42) / (R_MOON + 30e3);
-    const P = (p: Pt) => ({ x: w / 2 + p.x * ppm, y: h / 2 - p.y * ppm });
-    ctx.fillStyle = '#6b6f78';
-    ctx.beginPath(); ctx.arc(w / 2, h / 2, R_MOON * ppm, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#5a5e67';
-    for (const [a, d, r] of [[0.6, 0.5, 0.16], [2.2, 0.3, 0.1], [3.7, 0.62, 0.2], [5.1, 0.4, 0.12]]) {
-      ctx.beginPath(); ctx.arc(w / 2 + Math.cos(a) * d * R_MOON * ppm, h / 2 - Math.sin(a) * d * R_MOON * ppm, r * R_MOON * ppm, 0, Math.PI * 2); ctx.fill();
-    }
-    drawPath(ctx, view.path, P);
-    const site = P({ x: Math.cos(SITE_ANGLE) * R_MOON, y: Math.sin(SITE_ANGLE) * R_MOON });
-    marker(ctx, site.x, site.y, '#5adca0', 'Site');
-    if (view.impact !== null) {
-      const ip = P({ x: Math.cos(view.impact) * R_MOON, y: Math.sin(view.impact) * R_MOON });
-      cross(ctx, ip.x, ip.y);
-    }
-    const lp = P(s.r);
-    ctx.fillStyle = '#ffb347';
-    ctx.beginPath(); ctx.arc(lp.x, lp.y, 4, 0, Math.PI * 2); ctx.fill();
+    drawLunarMap(ctx, w, h, Math.atan2(s.r.y, s.r.x), SITE_ANGLE, view.path, view.impact);
     return;
   }
 
@@ -158,24 +141,12 @@ export function drawDescent(ctx: CanvasRenderingContext2D, w: number, h: number,
   const theta = Math.atan2(s.r.y, s.r.x);
   const half = (w / 2 / ppm) * 1.15;
   const span = Math.min(Math.PI, half / R_MOON + 1e-6);
-  const onSurface = (u: number) => P({ x: Math.cos(u / R_MOON) * R_MOON, y: Math.sin(u / R_MOON) * R_MOON });
+  const onSurface = (u: number) => P({ x: Math.cos(u / R_MOON) * terrainRadius(u / R_MOON), y: Math.sin(u / R_MOON) * terrainRadius(u / R_MOON) });
   const u0 = theta * R_MOON;
 
   earth(ctx, w * 0.8, Math.min(groundY - 70, h * 0.3));
 
-  // Macizos lejanos del polo sur en el horizonte, con un poco de paralaje.
-  const N = 160;
-  ctx.fillStyle = '#25272d';
-  ctx.beginPath();
-  for (let i = 0; i <= N; i++) {
-    const x = (i / N) * w;
-    const gy = onSurface(u0 + (x - w / 2) / ppm).y;
-    const k = x + u0 * ppm * 0.02;
-    const hgt = 10 + 9 * Math.sin(k * 0.011 + 1.3) + 6 * Math.sin(k * 0.031) + 3 * Math.sin(k * 0.093 + 2);
-    if (i === 0) ctx.moveTo(x, gy - hgt); else ctx.lineTo(x, gy - hgt);
-  }
-  ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath(); ctx.fill();
-
+  const N = 240;
   // Regolito: un arco de la esfera real, con el borde iluminado por el Sol rasante del polo.
   const surf: Pt[] = [];
   for (let i = 0; i <= N; i++) surf.push(onSurface(u0 + span * R_MOON * (i / N - 0.5) * 2));
@@ -186,37 +157,6 @@ export function drawDescent(ctx: CanvasRenderingContext2D, w: number, h: number,
   surf.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
   ctx.lineTo(w + 4000, h + 4000); ctx.lineTo(-4000, h + 4000); ctx.closePath(); ctx.fill();
 
-  // Cráteres fijos a la superficie, de varios tamaños: al pasar sobre ellos se ve la velocidad.
-  ctx.save();
-  ctx.beginPath();
-  surf.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-  ctx.lineTo(w + 4000, h + 4000); ctx.lineTo(-4000, h + 4000); ctx.closePath(); ctx.clip();
-  for (let level = 0; level < 6; level++) {
-    const size = 1.5 * 4 ** level; // radio típico (m)
-    const rpx = size * ppm;
-    if (rpx < 1.2 || rpx > w * 0.22) continue;
-    const step = size * 6;
-    const i0 = Math.floor((u0 - half) / step), i1 = Math.ceil((u0 + half) / step);
-    if (i1 - i0 > 500) continue;
-    for (let i = i0; i <= i1; i++) {
-      if (hash(i, level + 17) < 0.35) continue;
-      const u = (i + 0.15 + 0.7 * hash(i, level)) * step;
-      const r = size * (0.5 + hash(i, level + 9));
-      crater(ctx, onSurface(u), r * ppm, hash(i, level + 3));
-    }
-  }
-  // Cráter de sombra permanente junto al sitio, donde está el hielo (decorado: la simulación usa una esfera lisa).
-  const cp = onSurface((SITE_ANGLE * R_MOON) + CRATER_OFFSET);
-  const crx = CRATER_R * ppm;
-  if (cp.x > -crx && cp.x < w + crx) {
-    crater(ctx, cp, Math.max(4, crx), 0.5, true);
-    if (crx > 40) {
-      ctx.fillStyle = 'rgba(159, 198, 255, 0.85)'; ctx.font = '11px system-ui, sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('Permanently shadowed crater · water ice', cp.x, cp.y + Math.max(14, crx * 0.22) + 14);
-    }
-  }
-  ctx.restore();
-
   // Borde del suelo iluminado.
   ctx.strokeStyle = '#b4b8bf'; ctx.lineWidth = 1.2;
   ctx.beginPath();
@@ -224,7 +164,7 @@ export function drawDescent(ctx: CanvasRenderingContext2D, w: number, h: number,
   ctx.stroke();
 
   drawPath(ctx, view.path, P);
-  const site = P({ x: Math.cos(SITE_ANGLE) * R_MOON, y: Math.sin(SITE_ANGLE) * R_MOON });
+  const site = P({ x: Math.cos(SITE_ANGLE) * terrainRadius(SITE_ANGLE), y: Math.sin(SITE_ANGLE) * terrainRadius(SITE_ANGLE) });
   if (site.x > -50 && site.x < w + 50) marker(ctx, site.x, site.y, '#5adca0', 'Site');
   else {
     // Flecha al borde que indica hacia dónde queda el sitio.
@@ -233,7 +173,7 @@ export function drawDescent(ctx: CanvasRenderingContext2D, w: number, h: number,
     ctx.fillText(right ? `Site ${fmtKm(siteDistance(s))} →` : `← Site ${fmtKm(siteDistance(s))}`, right ? w - 14 : 14, groundY - 30);
   }
   if (view.impact !== null) {
-    const ip = P({ x: Math.cos(view.impact) * R_MOON, y: Math.sin(view.impact) * R_MOON });
+    const ip = P({ x: Math.cos(view.impact) * terrainRadius(view.impact), y: Math.sin(view.impact) * terrainRadius(view.impact) });
     if (ip.x > 0 && ip.x < w) cross(ctx, ip.x, ip.y);
   }
   // Sombra de la nave en el suelo, del lado opuesto al Sol (que está bajo, a la izquierda).
@@ -277,8 +217,10 @@ export function drawSurface(ctx: CanvasRenderingContext2D, w: number, h: number,
   const lit = sunlit(s.hours);
   sky(ctx, w, h);
   const ground = h * 0.66;
+  ctx.fillStyle = '#d6dbe4'; ctx.font = '12px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText('Base operations schematic · background profile from LOLA (vertical scale exaggerated)', w / 2, h * 0.16);
   // El Sol a menos de 2° sobre el horizonte, girando alrededor del polo una vez por mes lunar.
-  const az = ((s.hours / (29.5 * 24)) * Math.PI * 2) % (Math.PI * 2);
+  const az = lunarEnvironment(s.hours).solarAzimuth * Math.PI / 180;
   const sx = w * (0.5 + 0.45 * Math.cos(az));
   if (lit) {
     const g = ctx.createRadialGradient(sx, ground - 30, 2, sx, ground - 30, 60);
@@ -288,7 +230,7 @@ export function drawSurface(ctx: CanvasRenderingContext2D, w: number, h: number,
   // Cresta lejana que tapa el Sol durante la sombra.
   ctx.fillStyle = '#3a3d44';
   ctx.beginPath(); ctx.moveTo(0, ground);
-  for (let x = 0; x <= w; x += 20) ctx.lineTo(x, ground - 18 - 14 * Math.sin(x * 0.013) - 10 * Math.sin(x * 0.041 + 1));
+  for (let x = 0; x <= w; x += 5) { const a = SITE_ANGLE + ((x / w - 0.5) * 60000) / R_MOON; ctx.lineTo(x, ground - 18 - (terrainElevation(a) - terrainElevation(SITE_ANGLE)) * 0.025); }
   ctx.lineTo(w, ground); ctx.closePath(); ctx.fill();
   // Suelo: iluminado de costado o en penumbra.
   const soil = ctx.createLinearGradient(0, ground, 0, h);
@@ -310,7 +252,7 @@ export function drawSurface(ctx: CanvasRenderingContext2D, w: number, h: number,
   ctx.strokeStyle = lit ? '#a2a7b0' : '#4a4e56'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.ellipse(cx, ground + 34, cw / 2, 26, 0, Math.PI, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = '#9fc6ff'; ctx.font = '11px system-ui, sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('Permanently shadowed crater · water ice', cx, ground + 78);
+  ctx.fillText('Ice extraction area · mission scenario', cx, ground + 78);
   // Rover que perfora en el cráter
   if (s.drill) {
     const rx = cx - 30 + Math.sin(time * 0.6) * 4;

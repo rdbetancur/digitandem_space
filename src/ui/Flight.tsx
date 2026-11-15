@@ -14,6 +14,8 @@ import { FireCapture } from './FireTarget';
 import FlightGuide from './FlightGuide';
 import { describeFlight, setFlightContext } from './missionControlContext';
 import Term from './Term';
+import { isMapView, updateCamera, zoomCamera } from './flightCamera';
+import { circularizationEstimate } from './circularization';
 
 const WARPS = [1, 2, 5, 10, 50, 100, 1000];
 const SAS_LABEL: Record<Sas, string> = { mantener: 'Hold', prograda: 'Prograde', retrograda: 'Retrograde' };
@@ -28,6 +30,7 @@ const clock = (s: number) => {
 };
 
 interface Hud {
+  circularization: ReturnType<typeof circularizationEstimate>;
   t: number; alt: number; speed: number; speedSurf: number; vr: number; ap: number; pe: number; toAp: number;
   throttle: number; pitch: number; q: number; load: number; g: number; mass: number; twr: number; dv: number;
   stages: { fill: number; active: boolean; gone: boolean }[]; stageIdx: number; free: boolean;
@@ -59,6 +62,7 @@ function snapshot(f: FlightState, mission: Mission, warp: number): Hud {
   const g = 3.986004418e14 / (rm * rm);
   const st = payloadOnly(f) ? null : f.stages[f.stageIdx];
   return {
+    circularization: circularizationEstimate(f),
     t: f.t, alt, speed: Math.hypot(f.v.x, f.v.y), speedSurf: Math.hypot(f.v.x - air.x, f.v.y - air.y),
     vr: (f.v.x * f.r.x + f.v.y * f.r.y) / rm,
     ap: o.e < 1 ? o.ap - RE : Infinity, pe: o.pe - RE, toAp: f.landed ? Infinity : timeToApsides(f.r, f.v, o).toAp,
@@ -95,7 +99,6 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
   const warpRef = useRef(1);
   const keys = useRef<Set<string>>(new Set());
   const particles = useRef<Particle[]>([]);
-  const mapMode = useRef(false);
   const [hud, setHud] = useState<Hud>(() => snapshot(flightRef.current, mission, 1));
   const [help, setHelp] = useState(mission.id !== 'cubesat');
   const [guideOpen, setGuideOpen] = useState(mission.id === 'cubesat');
@@ -129,8 +132,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
   const toggleMap = () => {
     const c = canvasRef.current;
     if (!c) return;
-    mapMode.current = !mapMode.current;
-    camRef.current.targetZoom = mapMode.current ? fitZoom(flightRef.current, c.clientWidth, c.clientHeight) : 0.16;
+    camRef.current.targetZoom = isMapView(camRef.current) ? 0.16 : fitZoom(flightRef.current, c.clientWidth, c.clientHeight);
   };
   const cycleSas = () => {
     const f = flightRef.current;
@@ -201,8 +203,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
       const c = camRef.current;
-      c.targetZoom = Math.max(0.04, Math.min(4e5, c.targetZoom * Math.exp(e.deltaY * 0.0016)));
-      mapMode.current = c.targetZoom > 300;
+      zoomCamera(c, e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? canvas.clientHeight : 1));
     };
     canvas.addEventListener('wheel', wheel, { passive: false });
 
@@ -276,12 +277,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         particles.current = particles.current.filter((p) => p.life > 0).slice(-260);
       }
       const cam = camRef.current;
-      if (mapMode.current && !k.has('wheel')) {
-        // En mapa el encuadre sigue a la órbita mientras cambia.
-        const fit = fitZoom(f, canvas.clientWidth, canvas.clientHeight);
-        if (cam.targetZoom > fit * 3 || cam.targetZoom < fit / 3) cam.targetZoom = fit;
-      }
-      cam.zoom *= Math.exp((Math.log(cam.targetZoom) - Math.log(cam.zoom)) * Math.min(1, real * 6));
+      updateCamera(cam, real, Math.atan2(f.r.y, f.r.x));
       render(ctx, canvas.clientWidth, canvas.clientHeight, f, cam, time, particles.current, mission.target?.pos(f.t));
       if (now - hudAt > 90) { hudAt = now; setHud(snapshot(f, mission, warpRef.current)); }
       raf = requestAnimationFrame(frame);
@@ -311,7 +307,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
           <button className="btn tiny" onClick={() => stepWarp(1)} title="Key .">▶</button>
         </div>
         <div className="chip">{hud.context}</div>
-        <button className="btn tiny" onClick={toggleMap} title="Key M">{mapMode.current ? 'Craft view' : 'Map'}</button>
+        <button className="btn tiny" onClick={toggleMap} title="Key M">{isMapView(camRef.current) ? 'Craft view' : 'Map'}</button>
         <button className={`btn tiny ${paused ? 'on' : ''}`} onClick={togglePause} title="Key Esc">{paused ? 'Resume' : 'Pause'}</button>
         <button className="btn tiny" onClick={() => setHelp((v) => !v)} title="Key H">Controls</button>
         <button className={`btn tiny ${guideOpen ? 'on' : ''}`} onClick={() => { setGuideOpen((v) => !v); setHelp(false); }} aria-pressed={guideOpen}>Guide</button>
