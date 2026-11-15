@@ -6,17 +6,17 @@ const n = (x: number, d = 0) => x.toLocaleString('es-CO', { maximumFractionDigit
 interface Props {
   logbook: Report[];
   onStart: (missionId: string) => void;
+  onAtlas: () => void;
   onClearLog: () => void;
 }
 
 const SOON = [
-  { nombre: 'Atlas', texto: 'Sistema solar navegable con datos de efemérides de la NASA.' },
   { nombre: 'Carrera', texto: 'Dirige una agencia: presupuesto, contratos e investigación.' },
   { nombre: 'Hielo en la sombra', texto: 'Aluniza y mide recursos en el polo sur lunar.' },
   { nombre: 'Tripulación de 2 a 4', texto: 'Piloto, navegante, ingeniero y científico en la misma nave.' },
 ];
 
-export default function Home({ logbook, onStart, onClearLog }: Props) {
+export default function Home({ logbook, onStart, onAtlas, onClearLog }: Props) {
   return (
     <div className="home">
       <div className="home-sky" aria-hidden />
@@ -47,6 +47,13 @@ export default function Home({ logbook, onStart, onClearLog }: Props) {
             <p>{MISSIONS.ojo.resumen}</p>
             <span className="muted small">Inspirado en: {MISSIONS.ojo.inspiracion}</span>
             <span className="go">Aceptar misión →</span>
+          </button>
+          <button className="mode" onClick={onAtlas}>
+            <span className="mode-tag">Atlas</span>
+            <h2>Sistema solar</h2>
+            <p>Mira dónde está hoy cada planeta, cuánto tarda una señal en llegar y cuánto impulso le falta a tu nave para ir.</p>
+            <span className="muted small">Posiciones calculadas con elementos orbitales del JPL de la NASA.</span>
+            <span className="go">Abrir atlas →</span>
           </button>
         </section>
 

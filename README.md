@@ -18,6 +18,8 @@ NASA Space Apps Challenge 2026. Diseñas una nave, la pones a prueba, la pilotas
   automático de ascenso.
 - **Ciencia sin contrato**: cuatro instrumentos, cinco contextos, rendimientos decrecientes,
   y datos que solo cuentan del todo cuando llegan a una estación terrestre.
+- **Atlas del sistema solar**: posición de cada planeta en cualquier fecha, retraso de una señal,
+  energía solar disponible, impulso y ventana de lanzamiento para llegar, comparados con tu nave.
 - **Desafío "Ojo en la Tierra"**: seguir un incendio desde la órbita. La altura decide el detalle
   de las imágenes y el tiempo de enlace para bajarlas.
 - **Desafío "Primer CubeSat"** con seis objetivos, y **modo libre** sin presupuesto ni reloj.

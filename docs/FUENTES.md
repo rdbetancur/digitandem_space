@@ -12,6 +12,15 @@ Los términos de Space Apps exigen citar todo recurso usado. Esta lista se actua
 | Gravedad estándar | 9,80665 m/s² | Valor convencional |
 | Densidad del aire a nivel del mar | 1,225 kg/m³ | [NASA Glenn, Earth Atmosphere Model](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/earth-atmosphere-equation-metric/) |
 
+## Atlas del sistema solar
+
+| Dato | Fuente |
+| --- | --- |
+| Elementos orbitales de los planetas (a, e, L, longitud del perihelio y su variación por siglo), válidos de 1800 a 2050 | [JPL Solar System Dynamics, Approximate Positions of the Planets](https://ssd.jpl.nasa.gov/planets/approx_pos.html) |
+| Radio, gravedad, temperatura media y atmósfera de cada cuerpo; distancia media Tierra–Luna | [NASA Planetary Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/) |
+| Parámetro gravitacional del Sol y unidad astronómica | [JPL Solar System Dynamics, Astrodynamic Parameters](https://ssd.jpl.nasa.gov/astro_par.html) |
+| Misiones citadas en cada ficha (MESSENGER, Magellan, Landsat, LCROSS, Artemis, Perseverance, Juno, Europa Clipper, Cassini, Voyager 2, Parker Solar Probe) | [NASA Science, Missions](https://science.nasa.gov/missions/) |
+
 ## Modelos y conceptos
 
 | Concepto | Fuente |
@@ -40,6 +49,11 @@ Los enlaces de NASA Glenn están pendientes de verificación uno por uno antes d
 - **Cámara de observación.** El detalle de la imagen crece en proporción a la altura: 6 m por píxel
   por cada 100 km. La cámara apunta hasta 30° fuera de la vertical. El incendio de la misión
   "Ojo en la Tierra" es un escenario inventado, no un evento real de EONET.
+- **Atlas.** Mapa plano de la eclíptica: se ignora la inclinación de las órbitas. La Luna sigue una
+  órbita circular. El impulso y la duración de cada viaje son los de una transferencia de Hohmann
+  entre órbitas circulares y coplanares, saliendo de una órbita terrestre de 200 km, sin contar el
+  frenado al llegar. La ventana de lanzamiento es la fecha en que el ángulo entre la Tierra y el
+  destino coincide con el de esa transferencia.
 - **Radiación y campo magnético.** Curvas aproximadas: dipolo ecuatorial para el campo y una
   curva cualitativa para la dosis, con el aumento de los cinturones de Van Allen.
 - **Piezas.** Motores, depósitos y materiales son genéricos, con órdenes de magnitud de
