@@ -33,6 +33,8 @@ interface Hud {
   sciO: number; sciE: number; pendMB: number; objectives: boolean[]; ended: string | null; landed: boolean;
   launched: boolean; events: { t: number; text: string; kind: string }[]; orbiting: boolean;
   instValues: Record<string, number>;
+  panel: { k: string; v: string; tone?: 'ok' | 'bad' }[];
+  accion: string | null;
 }
 
 function snapshot(f: FlightState, mission: Mission, warp: number): Hud {
@@ -68,6 +70,8 @@ function snapshot(f: FlightState, mission: Mission, warp: number): Hud {
     objectives: objectivesDone(mission, f), ended: f.ended, landed: f.landed, launched: f.stats.liftoffT !== null,
     events: f.events.slice(-5), orbiting: !f.landed && o.e < 1 && o.pe - RE > ATM_TOP,
     instValues,
+    panel: mission.panel ? mission.panel(f) : [],
+    accion: mission.accion ? mission.accion.texto(f) : null,
   };
 }
 
@@ -223,6 +227,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
           const dt = simT / steps;
           for (let i = 0; i < steps && !f.ended; i++) {
             stepFlight(f, dt, rot / warp);
+            mission.onStep?.(f);
             if (warp > maxWarp(f)) { warpRef.current = maxWarp(f); break; }
           }
           // Registra los objetivos en cada cuadro: con aceleración temporal alta el tablero se refresca poco.
@@ -265,7 +270,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         if (cam.targetZoom > fit * 3 || cam.targetZoom < fit / 3) cam.targetZoom = fit;
       }
       cam.zoom *= Math.exp((Math.log(cam.targetZoom) - Math.log(cam.zoom)) * Math.min(1, real * 6));
-      render(ctx, canvas.clientWidth, canvas.clientHeight, f, cam, time, particles.current);
+      render(ctx, canvas.clientWidth, canvas.clientHeight, f, cam, time, particles.current, mission.target?.pos(f.t));
       if (now - hudAt > 90) { hudAt = now; setHud(snapshot(f, mission, warpRef.current)); }
       raf = requestAnimationFrame(frame);
     };
@@ -325,6 +330,10 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
                 </li>
               ))}
             </ul>
+            {hud.panel.map((r) => <Row key={r.k} k={r.k} v={r.v} tone={r.tone} />)}
+            {hud.accion && (
+              <button className="btn tiny wide" onClick={() => say(mission.accion!.run(f))}>{hud.accion}</button>
+            )}
           </>
         )}
         <h4>Propulsión</h4>
