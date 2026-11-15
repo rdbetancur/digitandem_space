@@ -8,6 +8,7 @@ import { Mission } from '../sim/missions';
 import { Design, PRESETS, StageDesign, cloneDesign, computeStats, hasFairing } from '../sim/vehicle';
 import { drawVehicle, vehicleHeight } from './vehicleDraw';
 import Term from './Term';
+import { FireBriefing } from './FireTarget';
 
 const n = (x: number, d = 0) => x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
 /** Delta-v de referencia para órbita baja terrestre, incluidas las pérdidas. */
@@ -209,6 +210,7 @@ export default function Lab({ design, mission, onChange, onLaunch, onHome }: Pro
         </section>
 
         <section className="lab-col summary">
+          {mission.id === 'ojo' && <FireBriefing />}
           {mission.requisitos && (
             <div className="card">
               <h3>Mission requirements</h3>

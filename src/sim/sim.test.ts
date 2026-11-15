@@ -201,6 +201,10 @@ describe('ojo en la tierra', () => {
     expect(measure(low, 'camara')).toBeNull();
     m.onStep!(low);
     expect(passes(low).total).toBe(1);
+    // La interfaz usa esta lista para mostrar la escena real con la nitidez de la órbita.
+    const shots = m.capturas!(low);
+    expect(shots).toHaveLength(1);
+    expect(shots[0].gsd).toBeCloseTo(18, 0);
 
     const high = overTarget(700e3);
     expect(measure(high, 'camara')).toBeNull();

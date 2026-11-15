@@ -48,7 +48,10 @@ The NASA Glenn links still need to be checked one by one before submission.
 - **Ground stations.** Three evenly spaced stations on the equator; a link only with line of sight.
 - **Observation camera.** Image detail grows in proportion to altitude: 6 m per pixel
   for every 100 km. The camera can point up to 30° off vertical. The wildfire in the
-  "Eye on Earth" mission is an invented scenario, not a real EONET event.
+  "Eye on Earth" mission is a real, currently active fire taken from NASA EONET when the
+  mission opens (or a saved one if the service does not answer). The game places it on its
+  equatorial flight plane; its real latitude does not affect the flight. The satellite scene
+  shown for each capture is real, but its sharpness is simulated from the player's orbit.
 - **Atlas.** A flat map of the ecliptic: orbital inclinations are ignored. The Moon follows a
   circular orbit. The delta-v and duration of each trip are those of a Hohmann transfer
   between circular, coplanar orbits, departing from a 200 km Earth orbit, not counting
@@ -74,4 +77,20 @@ The NASA Glenn links still need to be checked one by one before submission.
 | --- | --- |
 | [Gemini API](https://ai.google.dev/gemini-api/docs), Gemini 3.8 Flash model (Google) | Optional "Mission Control" assistant. It is only called when the player asks a question. |
 
-No third-party images, models or sounds are used: all graphics are drawn in code.
+## Live NASA data and imagery
+
+Requested from the player's browser when the screen opens. NASA content is generally not
+subject to copyright in the United States; each image shows its credit in the game.
+
+| Data | Use | Source |
+| --- | --- | --- |
+| Open wildfire events: name, coordinates, date and burned area | Target of the "Eye on Earth" mission | [NASA EONET API v3](https://eonet.gsfc.nasa.gov/docs/v3) |
+| Daily true-color imagery and thermal anomalies (VIIRS on NOAA-20) | Satellite view of the wildfire area on the report date | [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) |
+| One image per body: Sun (SDO), Mercury (MESSENGER), Venus (Mariner 10), Earth (Suomi NPP), Moon (Galileo), Mars (Viking), Jupiter and Saturn (Cassini), Uranus and Neptune (Voyager 2) | Photo in each Atlas card | [NASA Image and Video Library](https://images.nasa.gov/) |
+| Rotation period of each body | Atlas card | [NASA Planetary Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/) |
+
+A saved copy of one EONET event and its GIBS image (`public/nasa/wildfire-snapshot.jpg`,
+Red Hill fire, Mississippi, 12 November 2026) is used if the services are unreachable.
+
+Apart from those NASA images, no third-party images, models or sounds are used: all other
+graphics are drawn in code.
