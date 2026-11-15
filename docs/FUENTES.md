@@ -68,4 +68,10 @@ Los enlaces de NASA Glenn están pendientes de verificación uno por uno antes d
 | TypeScript | Apache 2.0 |
 | Vitest | MIT |
 
+## Servicios externos
+
+| Servicio | Uso |
+| --- | --- |
+| [Gemini API](https://ai.google.dev/gemini-api/docs), modelo Gemini 3.8 Flash (Google) | Asistente opcional "Control de Misión". Solo se llama cuando el jugador hace una pregunta. |
+
 No se usan imágenes, modelos ni sonidos de terceros: todos los gráficos se dibujan por código.

@@ -7,6 +7,7 @@ import Atlas from './Atlas';
 import Flight from './Flight';
 import Home from './Home';
 import Lab from './Lab';
+import MissionControl from './MissionControl';
 import Report from './Report';
 
 type Screen = 'home' | 'lab' | 'flight' | 'report' | 'atlas';
@@ -58,18 +59,26 @@ export default function App() {
 
   const launch = () => { setFlightKey((k) => k + 1); setScreen('flight'); };
 
+  // El Atlas compara los destinos con la nave del juego libre.
+  const atlasDesign = designs.sandbox ?? MISSIONS.sandbox.preset;
+  let view: JSX.Element;
+  let shown: Screen = screen;
   if (screen === 'lab') {
-    return <Lab design={design} mission={mission} onChange={setDesign} onLaunch={launch} onHome={() => setScreen('home')} />;
+    view = <Lab design={design} mission={mission} onChange={setDesign} onLaunch={launch} onHome={() => setScreen('home')} />;
+  } else if (screen === 'flight') {
+    view = <Flight key={flightKey} design={design} mission={mission} onEnd={finish} onBack={() => setScreen('lab')} />;
+  } else if (screen === 'report' && report) {
+    view = <Report report={report} onRetry={launch} onLab={() => setScreen('lab')} onHome={() => setScreen('home')} />;
+  } else if (screen === 'atlas') {
+    view = <Atlas design={atlasDesign} onHome={() => setScreen('home')} onLab={() => start('sandbox')} />;
+  } else {
+    shown = 'home';
+    view = <Home logbook={logbook} onStart={start} onAtlas={() => setScreen('atlas')} onClearLog={() => setLogbook([])} />;
   }
-  if (screen === 'flight') {
-    return <Flight key={flightKey} design={design} mission={mission} onEnd={finish} onBack={() => setScreen('lab')} />;
-  }
-  if (screen === 'report' && report) {
-    return <Report report={report} onRetry={launch} onLab={() => setScreen('lab')} onHome={() => setScreen('home')} />;
-  }
-  if (screen === 'atlas') {
-    // El Atlas compara los destinos con la nave del juego libre.
-    return <Atlas design={designs.sandbox ?? MISSIONS.sandbox.preset} onHome={() => setScreen('home')} onLab={() => start('sandbox')} />;
-  }
-  return <Home logbook={logbook} onStart={start} onAtlas={() => setScreen('atlas')} onClearLog={() => setLogbook([])} />;
+  return (
+    <>
+      {view}
+      <MissionControl screen={shown} mission={mission} design={shown === 'atlas' ? atlasDesign : design} report={report} />
+    </>
+  );
 }
