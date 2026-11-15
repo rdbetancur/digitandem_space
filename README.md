@@ -70,8 +70,10 @@ términos de Space Apps.
 
 ## Uso de inteligencia artificial
 
-Este proyecto se desarrolló con asistencia de IA (Claude, de Anthropic) para escribir código
-y documentación, bajo la dirección y revisión del equipo.
+Este proyecto se desarrolló con asistencia de IA para escribir código y documentación, bajo la
+dirección y revisión del equipo: Claude (Anthropic, mediante Claude Code) y Codex (OpenAI). Los
+commits escritos con Claude lo indican en sus metadatos con la línea `Co-Authored-By`. La idea
+del juego y las decisiones de diseño son del equipo.
 
 El juego incluye **Control de Misión**, un asistente opcional que responde preguntas del jugador
 con IA generativa (Gemini 3.8 Flash, de Google). Recibe la pregunta y un resumen del diseño y de
