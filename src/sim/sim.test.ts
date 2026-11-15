@@ -6,6 +6,7 @@ import {
   stageAction, stepFlight, timeToApsides,
 } from './flight';
 import { MISSIONS, objectivesDone } from './missions';
+import { gsd, passes, targetAngle, targetInView, timeToTarget } from './ojo';
 
 /** Coloca la carga útil sola en una órbita circular, lista para operar. */
 function inOrbit(f: Flight, alt = 300e3) {
@@ -173,5 +174,69 @@ describe('operación', () => {
     f.heading -= Math.PI / 2;
     fly(f, 10);
     expect(f.ended).toBe('estructura');
+  });
+});
+
+describe('ojo en la tierra', () => {
+  const m = MISSIONS.ojo;
+  /** Carga útil en órbita circular, justo sobre el incendio. */
+  function overTarget(alt: number): Flight {
+    const f = createFlight(m.preset);
+    inOrbit(f, alt);
+    const a = targetAngle(f.t), r = RE + alt, v = Math.sqrt(MU / r);
+    f.r = { x: r * Math.cos(a), y: r * Math.sin(a) };
+    f.v = { x: v * Math.sin(a), y: -v * Math.cos(a) };
+    stepFlight(f, 0.5);
+    return f;
+  }
+
+  it('el detalle de la imagen empeora con la altura', () => {
+    expect(gsd(200e3)).toBeCloseTo(12, 6);
+    expect(gsd(500e3)).toBeCloseTo(30, 6);
+  });
+
+  it('una foto sobre el incendio desde 300 km sirve; desde 700 km no', () => {
+    const low = overTarget(300e3);
+    expect(targetInView(low.r, low.t)).toBe(true);
+    expect(measure(low, 'camara')).toBeNull();
+    m.onStep!(low);
+    expect(passes(low).total).toBe(1);
+
+    const high = overTarget(700e3);
+    expect(measure(high, 'camara')).toBeNull();
+    m.onStep!(high);
+    expect(passes(high).total).toBe(0);
+  });
+
+  it('una foto lejos del incendio no cuenta', () => {
+    const f = createFlight(m.preset);
+    inOrbit(f, 300e3);
+    stepFlight(f, 0.5);
+    expect(targetInView(f.r, f.t)).toBe(false);
+    expect(measure(f, 'camara')).toBeNull();
+    m.onStep!(f);
+    expect(passes(f).total).toBe(0);
+  });
+
+  it('la captura programada dispara sola en cada sobrevuelo y cumple el seguimiento', () => {
+    const f = createFlight(m.preset);
+    inOrbit(f, 300e3);
+    stepFlight(f, 0.5);
+    deploy(f);
+    const eta = timeToTarget(f)!;
+    expect(eta).toBeGreaterThan(0);
+    let shots = 0;
+    while (shots < 3 && f.t < 8 * 3600) {
+      f.flags['ojo:armada'] = true;
+      const before = f.measurements.length;
+      while (f.measurements.length === before && f.t < 8 * 3600) { stepFlight(f, 0.5); m.onStep!(f); }
+      if (shots === 0) expect(Math.abs(f.t - eta)).toBeLessThan(120);
+      shots += 1;
+      // Sale de la zona antes de volver a programar.
+      for (let i = 0; i < 2400; i++) { stepFlight(f, 0.5); m.onStep!(f); }
+    }
+    expect(passes(f).total).toBe(3);
+    const done = objectivesDone(m, f);
+    expect(done[m.objetivos.findIndex((o) => o.id === 'seguimiento')]).toBe(true);
   });
 });

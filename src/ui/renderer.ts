@@ -45,6 +45,7 @@ export function fitZoom(f: Flight, w: number, h: number): number {
 
 export function render(
   ctx: CanvasRenderingContext2D, w: number, h: number, f: Flight, cam: Camera, time: number, particles: Particle[],
+  target?: Vec,
 ) {
   const zoom = cam.zoom;
   const lz = Math.log10(zoom);
@@ -224,6 +225,14 @@ export function render(
         ctx.setLineDash([]);
       }
     });
+    // Objetivo de observación de la misión: un punto naranja con un anillo que late.
+    if (target) {
+      const [x, y] = ws(target);
+      ctx.fillStyle = '#ff9a3c';
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,154,60,0.7)';
+      ctx.beginPath(); ctx.arc(x, y, 8 + 3 * Math.sin(time * 3), 0, Math.PI * 2); ctx.stroke();
+    }
   }
 
   // --- Humo ---

@@ -20,6 +20,8 @@ Los términos de Space Apps exigen citar todo recurso usado. Esta lista se actua
 | Presión dinámica | [NASA Glenn, Dynamic Pressure](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/dynamic-pressure/) |
 | Relación empuje/peso | [NASA Glenn, Thrust to Weight Ratio](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/thrust-to-weight-ratio/) |
 | Fases de una misión CubeSat | [NASA CSLI, CubeSat 101](https://www3.nasa.gov/sites/default/files/atoms/files/nasa_csli_cubesat_101_508.pdf) |
+| Observación de la Tierra: 30 m por píxel desde 705 km (Landsat 8 y 9) | [NASA, Landsat Science](https://landsat.gsfc.nasa.gov/) |
+| Seguimiento de eventos naturales como incendios | [NASA EONET](https://eonet.gsfc.nasa.gov/) |
 | Segmentos de una misión | [NASA, Design and Develop Science Missions](https://www.nasa.gov/wp-content/uploads/2025/04/250323-design-and-develop-science-mission.pdf) |
 
 Los enlaces de NASA Glenn están pendientes de verificación uno por uno antes de la entrega.
@@ -35,6 +37,9 @@ Los enlaces de NASA Glenn están pendientes de verificación uno por uno antes d
 - **Actitud.** La nave gira a velocidad limitada, sin inercia ni propelente de control.
 - **Sol fijo.** La dirección del Sol no cambia durante la misión.
 - **Estaciones terrestres.** Tres estaciones equidistantes sobre el ecuador; enlace solo con línea de vista.
+- **Cámara de observación.** El detalle de la imagen crece en proporción a la altura: 6 m por píxel
+  por cada 100 km. La cámara apunta hasta 30° fuera de la vertical. El incendio de la misión
+  "Ojo en la Tierra" es un escenario inventado, no un evento real de EONET.
 - **Radiación y campo magnético.** Curvas aproximadas: dipolo ecuatorial para el campo y una
   curva cualitativa para la dosis, con el aumento de los cinturones de Van Allen.
 - **Piezas.** Motores, depósitos y materiales son genéricos, con órdenes de magnitud de

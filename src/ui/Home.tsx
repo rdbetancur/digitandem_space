@@ -41,6 +41,13 @@ export default function Home({ logbook, onStart, onClearLog }: Props) {
             <span className="muted small">Inspirado en: {MISSIONS.cubesat.inspiracion}</span>
             <span className="go">Aceptar misión →</span>
           </button>
+          <button className="mode" onClick={() => onStart('ojo')}>
+            <span className="mode-tag">Desafío · {MISSIONS.ojo.nivel}</span>
+            <h2>{MISSIONS.ojo.nombre}</h2>
+            <p>{MISSIONS.ojo.resumen}</p>
+            <span className="muted small">Inspirado en: {MISSIONS.ojo.inspiracion}</span>
+            <span className="go">Aceptar misión →</span>
+          </button>
         </section>
 
         <section className="soon">

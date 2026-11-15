@@ -140,7 +140,7 @@ export function buildReport(f: Flight, mission: Mission): Report {
       aciertos.push(`Órbita de ${n((o.pe - RE) / 1000)} × ${n((o.ap - RE) / 1000)} km, con una vuelta cada ${n(o.period / 60, 1)} minutos.`);
       aciertos.push(`El ascenso costó ${n(s.dvUsed)} m/s. Las pérdidas por gravedad y aire fueron de ${n(lostTotal)} m/s (${n((lostTotal / Math.max(1, s.dvUsed)) * 100)} %).`);
       if (propLeft > 1) aciertos.push(`Quedaron ${n(propLeft)} kg de propelente de reserva para maniobras.`);
-      if (!referencia) referencia = mission.id === 'cubesat' ? REFS.cubesat : REFS.cohete;
+      if (!referencia) referencia = mission.referencia ?? (mission.id === 'cubesat' ? REFS.cubesat : REFS.cohete);
     }
     if (s.maxLoad > 0 && f.ended !== 'estructura') {
       const pct = (s.maxLoad / mat.qLimit) * 100;

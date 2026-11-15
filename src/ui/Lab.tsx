@@ -208,6 +208,12 @@ export default function Lab({ design, mission, onChange, onLaunch, onHome }: Pro
         </section>
 
         <section className="lab-col summary">
+          {mission.requisitos && (
+            <div className="card">
+              <h3>Requisitos de la misión</h3>
+              {mission.requisitos.map((r, i) => <p key={i} className="note">{r}</p>)}
+            </div>
+          )}
           <div className="card">
             <h3>Resumen del vehículo</h3>
             <Meter label="Delta-v total (vacío)" value={`${n(stats.dvVacTotal)} m/s`} pct={(stats.dvVacTotal / 12000) * 100} mark={(DV_LEO / 12000) * 100} markLabel="órbita baja" tone={stats.dvVacTotal >= DV_LEO ? 'ok' : 'warn'} />

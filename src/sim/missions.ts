@@ -1,5 +1,6 @@
 import { ATM_TOP, KARMAN, RE } from './constants';
-import { Flight, orbitOf, payloadOnly } from './flight';
+import { Flight, Vec, orbitOf, payloadOnly } from './flight';
+import { OJO } from './ojo';
 import { Design, PRESETS } from './vehicle';
 
 export interface Objective {
@@ -20,6 +21,18 @@ export interface Mission {
   presupuesto: number | null;
   preset: Design;
   objetivos: Objective[];
+  /** Requisitos de diseño que el laboratorio muestra antes de construir. */
+  requisitos?: string[];
+  /** Concepto y fuente que el informe enlaza al cumplir la misión. */
+  referencia?: { texto: string; fuente: string; url: string };
+  /** Punto de interés sobre la superficie, dibujado en el mapa. */
+  target?: { nombre: string; pos: (t: number) => Vec };
+  /** Lógica propia de la misión, llamada después de cada paso de simulación. */
+  onStep?: (f: Flight) => void;
+  /** Filas propias de la misión en el tablero de vuelo. */
+  panel?: (f: Flight) => { k: string; v: string; tone?: 'ok' | 'bad' }[];
+  /** Acción propia de la misión. run devuelve un aviso para el jugador, o null. */
+  accion?: { texto: (f: Flight) => string; run: (f: Flight) => string | null };
 }
 
 const inOrbit = (f: Flight) => {
@@ -82,6 +95,7 @@ export const MISSIONS: Record<string, Mission> = {
       },
     ],
   },
+  ojo: OJO,
 };
 
 /**
