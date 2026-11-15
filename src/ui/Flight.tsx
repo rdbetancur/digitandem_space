@@ -11,6 +11,7 @@ import { CONTEXTS, REPEAT_FACTOR, SCIENCE_VALUE, contextOf } from '../sim/scienc
 import { Design } from '../sim/vehicle';
 import { Camera, Particle, fitZoom, render } from './renderer';
 import FlightGuide from './FlightGuide';
+import { describeFlight, setFlightContext } from './missionControlContext';
 import Term from './Term';
 
 const WARPS = [1, 2, 5, 10, 50, 100, 1000];
@@ -147,6 +148,8 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      // Escribir en un campo de texto (el chat de Control de Misión) no pilota la nave.
+      if (e.target instanceof HTMLElement && e.target.closest('input, textarea')) return;
       const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
       if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) e.preventDefault();
       if (e.repeat) return;
@@ -170,10 +173,11 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
     const up = (e: KeyboardEvent) => { keys.current.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key); };
     // Si la ventana pierde el foco no llega el keyup: se sueltan todas las teclas.
     const blur = () => keys.current.clear();
+    setFlightContext(() => describeFlight(flightRef.current, mission));
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
+    return () => { setFlightContext(null); window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -18,6 +18,8 @@ NASA Space Apps Challenge 2026. Diseñas una nave, la pones a prueba, la pilotas
   automático de ascenso.
 - **Ciencia sin contrato**: cuatro instrumentos, cinco contextos, rendimientos decrecientes,
   y datos que solo cuentan del todo cuando llegan a una estación terrestre.
+- **Control de Misión**: asistente con IA que ve tu nave y tu vuelo, y explica qué hacer, por qué
+  pasó algo o cómo funciona cualquier mecánica.
 - **Atlas del sistema solar**: posición de cada planeta en cualquier fecha, retraso de una señal,
   energía solar disponible, impulso y ventana de lanzamiento para llegar, comparados con tu nave.
 - **Desafío "Ojo en la Tierra"**: seguir un incendio desde la órbita. La altura decide el detalle
@@ -68,9 +70,27 @@ términos de Space Apps.
 
 ## Uso de inteligencia artificial
 
-Este proyecto se desarrolló con asistencia de IA (Claude, de Anthropic) para escribir código
-y documentación, bajo la dirección y revisión del equipo. El juego no usa IA generativa en
-tiempo de ejecución.
+Este proyecto se desarrolló con asistencia de IA para escribir código y documentación, bajo la
+dirección y revisión del equipo: Claude (Anthropic, mediante Claude Code) y Codex (OpenAI). Los
+commits escritos con Claude lo indican en sus metadatos con la línea `Co-Authored-By`. La idea
+del juego y las decisiones de diseño son del equipo.
+
+El juego incluye **Control de Misión**, un asistente opcional que responde preguntas del jugador
+con IA generativa (Gemini 3.8 Flash, de Google). Recibe la pregunta y un resumen del diseño y de
+la telemetría del vuelo; no recibe datos personales. Sus respuestas van marcadas como generadas
+por IA. El resto del juego (física, misiones, informe y Atlas) no usa IA y funciona sin él.
+
+### Activar Control de Misión
+
+La clave de la API vive solo en el servidor; nunca se sube al repositorio ni llega al navegador.
+
+- **En tu equipo:** crea el archivo `.env.local` en la raíz (git lo ignora) con una línea
+  `GEMINI_API_KEY=tu_clave` y reinicia `npm run dev`. Cada persona puede crear su propia clave
+  gratuita en [Google AI Studio](https://aistudio.google.com/apikey).
+- **En Vercel:** agrega la variable `GEMINI_API_KEY` en Settings → Environment Variables y
+  vuelve a desplegar.
+
+Sin clave, el juego funciona igual y el asistente avisa que no está configurado.
 
 ## Licencia
 
