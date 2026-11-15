@@ -175,7 +175,7 @@ const untested = { vibracion: false, tunel: false };
 
 export const PRESETS: Record<string, Design> = {
   pequeno: {
-    nombre: 'Lanzador pequeño de dos etapas',
+    nombre: 'Small two-stage launcher',
     material: 'alli',
     stages: [
       { engine: 'colibri', engines: 7, tank: 't1000', tanks: 9 },
@@ -185,14 +185,14 @@ export const PRESETS: Record<string, Design> = {
     antenna: 'simple', shield: false, chute: false, fairing: true, tested: { ...untested },
   },
   sondeo: {
-    nombre: 'Cohete de sondeo',
+    nombre: 'Sounding rocket',
     material: 'acero',
     stages: [{ engine: 'colibri', engines: 1, tank: 't250', tanks: 4 }],
     core: 'sonda', instruments: ['termo', 'radiacion'], panels: 0, batteries: 0,
     antenna: 'simple', shield: true, chute: true, fairing: true, tested: { ...untested },
   },
   mediano: {
-    nombre: 'Lanzador mediano con cápsula',
+    nombre: 'Medium launcher with capsule',
     material: 'alli',
     stages: [
       { engine: 'halcon', engines: 3, tank: 't25000', tanks: 6 },

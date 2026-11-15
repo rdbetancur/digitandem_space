@@ -15,7 +15,7 @@ function missionControlDev(apiKey: string | undefined): Plugin {
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(json));
         };
-        if (req.method !== 'POST') { send(405, { error: 'metodo', message: 'Usa POST.' }); return; }
+        if (req.method !== 'POST') { send(405, { error: 'metodo', message: 'Use POST.' }); return; }
         let raw = '';
         req.on('data', (chunk) => { raw += chunk; if (raw.length > 100_000) req.destroy(); });
         req.on('end', async () => {
@@ -24,7 +24,7 @@ function missionControlDev(apiKey: string | undefined): Plugin {
             const out = await missionControl(JSON.parse(raw || '{}'), apiKey);
             send(out.status, out.json);
           } catch {
-            send(400, { error: 'solicitud', message: 'Solicitud inválida.' });
+            send(400, { error: 'solicitud', message: 'Invalid request.' });
           }
         });
       });

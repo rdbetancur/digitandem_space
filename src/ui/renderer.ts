@@ -381,7 +381,7 @@ function drawNavball(ctx: CanvasRenderingContext2D, w: number, h: number, f: Fli
   ctx.font = '600 10px ui-monospace, Menlo, monospace';
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.textAlign = 'center';
-  ctx.fillText(surface ? 'REF. SUPERFICIE' : 'REF. ÓRBITA', x0, y0 - R - 6);
+  ctx.fillText(surface ? 'REF. SURFACE' : 'REF. ORBIT', x0, y0 - R - 6);
   ctx.textAlign = 'left';
   void payloadOnly;
 }

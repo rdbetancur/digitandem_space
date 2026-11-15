@@ -2,27 +2,27 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AU, BODIES, BODY, BodyId, P2, distance, lightTime, orbitPoint, position, solarFactor, trip } from '../sim/atlas';
 import { Design, computeStats } from '../sim/vehicle';
 
-const n = (x: number, d = 0) => x.toLocaleString('es-CO', { maximumFractionDigits: d, minimumFractionDigits: d });
+const n = (x: number, d = 0) => x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
 const DAY = 86400e3;
 /** Delta-v de referencia para llegar a la órbita baja, igual que en el laboratorio. */
 const DV_LEO = 9400;
 const SPEEDS = [
-  { label: 'Pausa', days: 0 },
-  { label: '1 día/s', days: 1 },
-  { label: '1 mes/s', days: 30 },
-  { label: '1 año/s', days: 365 },
+  { label: 'Pause', days: 0 },
+  { label: '1 day/s', days: 1 },
+  { label: '1 month/s', days: 30 },
+  { label: '1 year/s', days: 365 },
 ];
 
-const fmtDate = (ms: number) => new Date(ms).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const fmtDate = (ms: number) => new Date(ms).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 function duration(s: number): string {
   if (s < 120) return `${n(s, 1)} s`;
   if (s < 2 * 3600) return `${n(s / 60, 1)} min`;
   if (s < 3 * 86400) return `${n(s / 3600, 1)} h`;
   const d = s / 86400;
-  if (d < 90) return `${n(d)} días`;
-  if (d < 730) return `${n(d / 30.44, 1)} meses`;
-  return `${n(d / 365.25, 1)} años`;
+  if (d < 90) return `${n(d)} days`;
+  if (d < 730) return `${n(d / 30.44, 1)} months`;
+  return `${n(d / 365.25, 1)} years`;
 }
 
 interface Props {
@@ -215,16 +215,16 @@ export default function Atlas({ design, onHome, onLab }: Props) {
       <canvas ref={canvasRef} className="flight-canvas" />
 
       <div className="hud hud-top">
-        <button className="btn ghost" onClick={onHome}>← Inicio</button>
+        <button className="btn ghost" onClick={onHome}>← Home</button>
         <div className="clock">{fmtDate(date)}</div>
         <div className="seg">
           {SPEEDS.map((s, i) => (
             <button key={s.label} className={`btn tiny ${speed === i ? 'on' : ''}`} onClick={() => setRate(i)}>{s.label}</button>
           ))}
         </div>
-        <button className="btn tiny" onClick={today}>Hoy</button>
-        <button className={`btn tiny ${visual ? '' : 'on'}`} onClick={() => setScale(!visual)} title="Cambiar entre escala visual y escala física">
-          {visual ? 'Escala visual' : 'Escala física'}
+        <button className="btn tiny" onClick={today}>Today</button>
+        <button className={`btn tiny ${visual ? '' : 'on'}`} onClick={() => setScale(!visual)} title="Switch between visual scale and physical scale">
+          {visual ? 'Visual scale' : 'Physical scale'}
         </button>
       </div>
 
@@ -237,43 +237,43 @@ export default function Atlas({ design, onHome, onLab }: Props) {
         <h3 className="atlas-name"><i style={{ background: b.color }} />{b.nombre}</h3>
         <p className="note">{b.tipo}. {b.interes}</p>
         <div className="kv">
-          <span>Gravedad</span><b>{n(b.gravedad, b.gravedad < 20 ? 2 : 0)} m/s² · {n(b.gravedad / 9.80665, 2)} g</b>
-          <span>Radio</span><b>{n(b.radio)} km</b>
-          <span>Temperatura media</span><b>{n(b.temperatura)} °C</b>
-          {sel !== 'sol' && <><span>Distancia al Sol</span><b>{n(rSun, 2)} UA · {n((rSun * AU) / 1e9)} M km</b></>}
-          {sel !== 'tierra' && <><span>Distancia a la Tierra</span><b>{dEarth < 5e9 ? `${n(dEarth / 1000)} km` : `${n(dEarth / 1e9)} M km`}</b></>}
-          {sel !== 'tierra' && <><span>Retraso de una señal</span><b>{duration(lightTime(dEarth))}</b></>}
-          {sel !== 'sol' && <><span>Energía solar</span><b>{n(solarFactor(sel, date) * 100, solarFactor(sel, date) < 0.1 ? 1 : 0)} % de la de la Tierra</b></>}
+          <span>Gravity</span><b>{n(b.gravedad, b.gravedad < 20 ? 2 : 0)} m/s² · {n(b.gravedad / 9.80665, 2)} g</b>
+          <span>Radius</span><b>{n(b.radio)} km</b>
+          <span>Mean temperature</span><b>{n(b.temperatura)} °C</b>
+          {sel !== 'sol' && <><span>Distance to the Sun</span><b>{n(rSun, 2)} AU · {n((rSun * AU) / 1e9)} M km</b></>}
+          {sel !== 'tierra' && <><span>Distance to Earth</span><b>{dEarth < 5e9 ? `${n(dEarth / 1000)} km` : `${n(dEarth / 1e9)} M km`}</b></>}
+          {sel !== 'tierra' && <><span>Signal delay</span><b>{duration(lightTime(dEarth))}</b></>}
+          {sel !== 'sol' && <><span>Solar power</span><b>{n(solarFactor(sel, date) * 100, solarFactor(sel, date) < 0.1 ? 1 : 0)} % of Earth's</b></>}
         </div>
-        <p className="note">Atmósfera: {b.atmosfera}</p>
+        <p className="note">Atmosphere: {b.atmosfera}</p>
         <p className="note">{b.mision}</p>
 
         {tr && (
           <>
-            <h4>Llegar desde la órbita baja</h4>
+            <h4>Getting there from low orbit</h4>
             <div className="kv">
-              <span>Impulso de salida</span><b>{n(tr.dv)} m/s</b>
-              <span>Duración del viaje</span><b>{duration(tr.time)}</b>
-              <span>Próxima ventana</span><b>{tr.window ? fmtDate(tr.window) : sel === 'luna' ? 'cualquier día' : 'en más de 2 años'}</b>
+              <span>Departure delta-v</span><b>{n(tr.dv)} m/s</b>
+              <span>Trip duration</span><b>{duration(tr.time)}</b>
+              <span>Next window</span><b>{tr.window ? fmtDate(tr.window) : sel === 'luna' ? 'any day' : 'more than 2 years away'}</b>
             </div>
             <p className={`issue ${spare >= tr.dv ? 'ok-line' : 'warn'}`}>
               {spare < 0
-                ? `Tu nave «${design.nombre}» todavía no alcanza la órbita baja: le faltan ${n(-spare)} m/s.`
+                ? `Your craft "${design.nombre}" cannot reach low orbit yet: it is ${n(-spare)} m/s short.`
                 : spare >= tr.dv
-                  ? `Tu nave «${design.nombre}» llega a la órbita baja con ${n(spare)} m/s de sobra: alcanza para salir hacia ${b.nombre}.`
-                  : `Tu nave «${design.nombre}» llega a la órbita baja con ${n(spare)} m/s de sobra: le faltan ${n(tr.dv - spare)} m/s para salir hacia ${b.nombre}.`}
+                  ? `Your craft "${design.nombre}" reaches low orbit with ${n(spare)} m/s to spare: enough to depart for ${b.nombre}.`
+                  : `Your craft "${design.nombre}" reaches low orbit with ${n(spare)} m/s to spare: it needs ${n(tr.dv - spare)} m/s more to depart for ${b.nombre}.`}
             </p>
-            <p className="note">Estimación de mínima energía con órbitas circulares. No incluye frenar ni aterrizar al llegar. El vuelo interplanetario todavía no es jugable: el Atlas sirve para planear.</p>
-            <button className="btn wide" onClick={onLab}>Rediseñar la nave en el laboratorio</button>
+            <p className="note">Minimum-energy estimate with circular orbits. It does not include braking or landing on arrival. Interplanetary flight is not playable yet: the Atlas is for planning.</p>
+            <button className="btn wide" onClick={onLab}>Redesign the craft in the lab</button>
           </>
         )}
       </div>
 
       <div className="hud atlas-foot">
         {visual
-          ? 'Escala visual: distancias comprimidas y planetas agrandados para que todo quepa.'
-          : 'Escala física: distancias y tamaños reales. Los planetas son puntos; acerca la vista con la rueda del ratón.'}
-        {' '}Posiciones aproximadas con elementos orbitales del JPL (válidos de 1800 a 2050), sobre el plano de la eclíptica.
+          ? 'Visual scale: distances compressed and planets enlarged so everything fits.'
+          : 'Physical scale: real distances and sizes. Planets are dots; zoom in with the mouse wheel.'}
+        {' '}Approximate positions from JPL orbital elements (valid from 1800 to 2050), on the plane of the ecliptic.
       </div>
     </div>
   );

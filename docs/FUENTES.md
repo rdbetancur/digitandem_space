@@ -1,77 +1,77 @@
-# Fuentes, datos y simplificaciones
+# Sources, data and simplifications
 
-Los términos de Space Apps exigen citar todo recurso usado. Esta lista se actualiza con cada cambio.
+The Space Apps terms require citing every resource used. This list is updated with every change.
 
-## Constantes físicas
+## Physical constants
 
-| Magnitud | Valor usado | Fuente |
+| Quantity | Value used | Source |
 | --- | --- | --- |
-| Parámetro gravitacional de la Tierra | 3,986004418 × 10¹⁴ m³/s² | [NASA Earth Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html) |
-| Radio medio de la Tierra | 6.371 km | NASA Earth Fact Sheet |
-| Rotación de la Tierra | 7,2921159 × 10⁻⁵ rad/s | NASA Earth Fact Sheet (día sidéreo) |
-| Gravedad estándar | 9,80665 m/s² | Valor convencional |
-| Densidad del aire a nivel del mar | 1,225 kg/m³ | [NASA Glenn, Earth Atmosphere Model](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/earth-atmosphere-equation-metric/) |
+| Earth's gravitational parameter | 3.986004418 × 10¹⁴ m³/s² | [NASA Earth Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html) |
+| Earth's mean radius | 6,371 km | NASA Earth Fact Sheet |
+| Earth's rotation | 7.2921159 × 10⁻⁵ rad/s | NASA Earth Fact Sheet (sidereal day) |
+| Standard gravity | 9.80665 m/s² | Conventional value |
+| Air density at sea level | 1.225 kg/m³ | [NASA Glenn, Earth Atmosphere Model](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/earth-atmosphere-equation-metric/) |
 
-## Atlas del sistema solar
+## Solar system atlas
 
-| Dato | Fuente |
+| Data | Source |
 | --- | --- |
-| Elementos orbitales de los planetas (a, e, L, longitud del perihelio y su variación por siglo), válidos de 1800 a 2050 | [JPL Solar System Dynamics, Approximate Positions of the Planets](https://ssd.jpl.nasa.gov/planets/approx_pos.html) |
-| Radio, gravedad, temperatura media y atmósfera de cada cuerpo; distancia media Tierra–Luna | [NASA Planetary Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/) |
-| Parámetro gravitacional del Sol y unidad astronómica | [JPL Solar System Dynamics, Astrodynamic Parameters](https://ssd.jpl.nasa.gov/astro_par.html) |
-| Misiones citadas en cada ficha (MESSENGER, Magellan, Landsat, LCROSS, Artemis, Perseverance, Juno, Europa Clipper, Cassini, Voyager 2, Parker Solar Probe) | [NASA Science, Missions](https://science.nasa.gov/missions/) |
+| Planetary orbital elements (a, e, L, longitude of perihelion and their rates per century), valid from 1800 to 2050 | [JPL Solar System Dynamics, Approximate Positions of the Planets](https://ssd.jpl.nasa.gov/planets/approx_pos.html) |
+| Radius, gravity, mean temperature and atmosphere of each body; mean Earth–Moon distance | [NASA Planetary Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/) |
+| Sun's gravitational parameter and astronomical unit | [JPL Solar System Dynamics, Astrodynamic Parameters](https://ssd.jpl.nasa.gov/astro_par.html) |
+| Missions cited on each card (MESSENGER, Magellan, Landsat, LCROSS, Artemis, Perseverance, Juno, Europa Clipper, Cassini, Voyager 2, Parker Solar Probe) | [NASA Science, Missions](https://science.nasa.gov/missions/) |
 
-## Modelos y conceptos
+## Models and concepts
 
-| Concepto | Fuente |
+| Concept | Source |
 | --- | --- |
-| Ecuación del cohete | [NASA Glenn, Ideal Rocket Equation](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/ideal-rocket-equation/) |
-| Presión dinámica | [NASA Glenn, Dynamic Pressure](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/dynamic-pressure/) |
-| Relación empuje/peso | [NASA Glenn, Thrust to Weight Ratio](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/thrust-to-weight-ratio/) |
-| Fases de una misión CubeSat | [NASA CSLI, CubeSat 101](https://www3.nasa.gov/sites/default/files/atoms/files/nasa_csli_cubesat_101_508.pdf) |
-| Observación de la Tierra: 30 m por píxel desde 705 km (Landsat 8 y 9) | [NASA, Landsat Science](https://landsat.gsfc.nasa.gov/) |
-| Seguimiento de eventos naturales como incendios | [NASA EONET](https://eonet.gsfc.nasa.gov/) |
-| Segmentos de una misión | [NASA, Design and Develop Science Missions](https://www.nasa.gov/wp-content/uploads/2025/04/250323-design-and-develop-science-mission.pdf) |
+| Rocket equation | [NASA Glenn, Ideal Rocket Equation](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/ideal-rocket-equation/) |
+| Dynamic pressure | [NASA Glenn, Dynamic Pressure](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/dynamic-pressure/) |
+| Thrust-to-weight ratio | [NASA Glenn, Thrust to Weight Ratio](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/thrust-to-weight-ratio/) |
+| Phases of a CubeSat mission | [NASA CSLI, CubeSat 101](https://www3.nasa.gov/sites/default/files/atoms/files/nasa_csli_cubesat_101_508.pdf) |
+| Earth observation: 30 m per pixel from 705 km (Landsat 8 and 9) | [NASA, Landsat Science](https://landsat.gsfc.nasa.gov/) |
+| Tracking natural events such as wildfires | [NASA EONET](https://eonet.gsfc.nasa.gov/) |
+| Segments of a mission | [NASA, Design and Develop Science Missions](https://www.nasa.gov/wp-content/uploads/2025/04/250323-design-and-develop-science-mission.pdf) |
 
-Los enlaces de NASA Glenn están pendientes de verificación uno por uno antes de la entrega.
+The NASA Glenn links still need to be checked one by one before submission.
 
-## Simplificaciones declaradas
+## Stated simplifications
 
-- **Plano único.** El vuelo ocurre en el plano ecuatorial. No hay inclinación orbital.
-- **Atmósfera exponencial.** Densidad con altura de escala de 8,5 km, sin aire por encima de 140 km.
-  La temperatura que reporta el termómetro sigue la atmósfera estándar por tramos.
-- **Arrastre.** Coeficiente fijo según la forma de la punta; sin efectos transónicos.
-- **Carga estructural.** Presión dinámica multiplicada por un factor que crece con el ángulo de ataque.
-- **Calentamiento.** Flujo de calor con la correlación de Sutton-Graves simplificada y un umbral por configuración.
-- **Actitud.** La nave gira a velocidad limitada, sin inercia ni propelente de control.
-- **Sol fijo.** La dirección del Sol no cambia durante la misión.
-- **Estaciones terrestres.** Tres estaciones equidistantes sobre el ecuador; enlace solo con línea de vista.
-- **Cámara de observación.** El detalle de la imagen crece en proporción a la altura: 6 m por píxel
-  por cada 100 km. La cámara apunta hasta 30° fuera de la vertical. El incendio de la misión
-  "Ojo en la Tierra" es un escenario inventado, no un evento real de EONET.
-- **Atlas.** Mapa plano de la eclíptica: se ignora la inclinación de las órbitas. La Luna sigue una
-  órbita circular. El impulso y la duración de cada viaje son los de una transferencia de Hohmann
-  entre órbitas circulares y coplanares, saliendo de una órbita terrestre de 200 km, sin contar el
-  frenado al llegar. La ventana de lanzamiento es la fecha en que el ángulo entre la Tierra y el
-  destino coincide con el de esa transferencia.
-- **Radiación y campo magnético.** Curvas aproximadas: dipolo ecuatorial para el campo y una
-  curva cualitativa para la dosis, con el aumento de los cinturones de Van Allen.
-- **Piezas.** Motores, depósitos y materiales son genéricos, con órdenes de magnitud de
-  lanzadores pequeños y medianos reales. Los valores están pendientes de calibración.
+- **Single plane.** Flight happens in the equatorial plane. There is no orbital inclination.
+- **Exponential atmosphere.** Density with an 8.5 km scale height, and no air above 140 km.
+  The temperature reported by the thermometer follows the piecewise standard atmosphere.
+- **Drag.** A fixed coefficient depending on the nose shape; no transonic effects.
+- **Structural load.** Dynamic pressure multiplied by a factor that grows with the angle of attack.
+- **Heating.** Heat flux from a simplified Sutton-Graves correlation, with a threshold per configuration.
+- **Attitude.** The craft turns at a limited rate, with no inertia or control propellant.
+- **Fixed Sun.** The direction of the Sun does not change during the mission.
+- **Ground stations.** Three evenly spaced stations on the equator; a link only with line of sight.
+- **Observation camera.** Image detail grows in proportion to altitude: 6 m per pixel
+  for every 100 km. The camera can point up to 30° off vertical. The wildfire in the
+  "Eye on Earth" mission is an invented scenario, not a real EONET event.
+- **Atlas.** A flat map of the ecliptic: orbital inclinations are ignored. The Moon follows a
+  circular orbit. The delta-v and duration of each trip are those of a Hohmann transfer
+  between circular, coplanar orbits, departing from a 200 km Earth orbit, not counting
+  braking on arrival. The launch window is the date when the angle between Earth and the
+  destination matches the one for that transfer.
+- **Radiation and magnetic field.** Approximate curves: an equatorial dipole for the field and a
+  qualitative curve for the dose, with the rise in the Van Allen belts.
+- **Parts.** Engines, tanks and materials are generic, with orders of magnitude taken from real
+  small and medium launchers. The values are still to be calibrated.
 
-## Software de terceros
+## Third-party software
 
-| Paquete | Licencia |
+| Package | License |
 | --- | --- |
 | React, React DOM | MIT |
 | Vite, @vitejs/plugin-react | MIT |
 | TypeScript | Apache 2.0 |
 | Vitest | MIT |
 
-## Servicios externos
+## External services
 
-| Servicio | Uso |
+| Service | Use |
 | --- | --- |
-| [Gemini API](https://ai.google.dev/gemini-api/docs), modelo Gemini 3.8 Flash (Google) | Asistente opcional "Control de Misión". Solo se llama cuando el jugador hace una pregunta. |
+| [Gemini API](https://ai.google.dev/gemini-api/docs), Gemini 3.8 Flash model (Google) | Optional "Mission Control" assistant. It is only called when the player asks a question. |
 
-No se usan imágenes, modelos ni sonidos de terceros: todos los gráficos se dibujan por código.
+No third-party images, models or sounds are used: all graphics are drawn in code.

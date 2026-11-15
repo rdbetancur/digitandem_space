@@ -9,7 +9,7 @@ import { Design, PRESETS, StageDesign, cloneDesign, computeStats, hasFairing } f
 import { drawVehicle, vehicleHeight } from './vehicleDraw';
 import Term from './Term';
 
-const n = (x: number, d = 0) => x.toLocaleString('es-CO', { maximumFractionDigits: d, minimumFractionDigits: d });
+const n = (x: number, d = 0) => x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
 /** Delta-v de referencia para órbita baja terrestre, incluidas las pérdidas. */
 const DV_LEO = 9400;
 
@@ -83,29 +83,29 @@ export default function Lab({ design, mission, onChange, onLaunch, onHome }: Pro
   const twr = stats.twrLiftoff;
   const overBudget = mission.presupuesto !== null && stats.cost > mission.presupuesto;
   const issues: { tone: 'bad' | 'warn'; text: string }[] = [];
-  if (design.stages.length === 0) issues.push({ tone: 'bad', text: 'La nave no tiene etapas de propulsión.' });
-  if (design.stages.length && twr < 1) issues.push({ tone: 'bad', text: `Empuje/peso de ${n(twr, 2)}: con menos de 1 no despega.` });
-  else if (twr < 1.2 && design.stages.length) issues.push({ tone: 'warn', text: `Empuje/peso de ${n(twr, 2)}: despegará muy lento y gastará propelente contra la gravedad.` });
-  if (twr > 2.2) issues.push({ tone: 'warn', text: `Empuje/peso de ${n(twr, 2)}: acelerará muy rápido dentro del aire denso. Vigila la carga aerodinámica.` });
-  if (stats.dvVacTotal < DV_LEO) issues.push({ tone: 'warn', text: `Delta-v de ${n(stats.dvVacTotal)} m/s: no alcanza para una órbita baja (unos ${n(DV_LEO)} m/s).` });
-  if (design.instruments.length > 0 && design.antenna === 'ninguna') issues.push({ tone: 'warn', text: 'Lleva instrumentos pero no antena: los datos solo valen si regresan a Tierra.' });
-  if (stats.solarW < stats.baseW) issues.push({ tone: 'warn', text: `Genera ${n(stats.solarW)} W y consume ${n(stats.baseW)} W en reposo: dependerá de la batería (${n(stats.batteryWh / Math.max(1, stats.baseW - stats.solarW), 1)} h).` });
-  if (overBudget) issues.push({ tone: 'bad', text: `Cuesta ${n(stats.cost, 1)} M USD y el contrato permite ${n(mission.presupuesto!)} M USD.` });
-  if (tunnel && tunnel.maxLoad > mat.qLimit && design.tested.vibracion) issues.push({ tone: 'warn', text: 'A plena potencia la carga supera el límite estructural: habrá que reducir potencia en el aire denso.' });
+  if (design.stages.length === 0) issues.push({ tone: 'bad', text: 'The craft has no propulsion stages.' });
+  if (design.stages.length && twr < 1) issues.push({ tone: 'bad', text: `Thrust/weight of ${n(twr, 2)}: below 1 it will not lift off.` });
+  else if (twr < 1.2 && design.stages.length) issues.push({ tone: 'warn', text: `Thrust/weight of ${n(twr, 2)}: it will lift off very slowly and waste propellant fighting gravity.` });
+  if (twr > 2.2) issues.push({ tone: 'warn', text: `Thrust/weight of ${n(twr, 2)}: it will accelerate very fast in dense air. Watch the aerodynamic load.` });
+  if (stats.dvVacTotal < DV_LEO) issues.push({ tone: 'warn', text: `Delta-v of ${n(stats.dvVacTotal)} m/s: not enough for low orbit (about ${n(DV_LEO)} m/s).` });
+  if (design.instruments.length > 0 && design.antenna === 'ninguna') issues.push({ tone: 'warn', text: 'It carries instruments but no antenna: data only counts if it gets back to Earth.' });
+  if (stats.solarW < stats.baseW) issues.push({ tone: 'warn', text: `It generates ${n(stats.solarW)} W and uses ${n(stats.baseW)} W at rest: it will depend on the battery (${n(stats.batteryWh / Math.max(1, stats.baseW - stats.solarW), 1)} h).` });
+  if (overBudget) issues.push({ tone: 'bad', text: `It costs ${n(stats.cost, 1)} M USD and the contract allows ${n(mission.presupuesto!)} M USD.` });
+  if (tunnel && tunnel.maxLoad > mat.qLimit && design.tested.vibracion) issues.push({ tone: 'warn', text: 'At full throttle the load exceeds the structural limit: you will need to throttle down in dense air.' });
   const blocked = design.stages.length === 0 || overBudget;
 
   return (
     <div className="lab">
       <header className="lab-head">
-        <button className="btn ghost" onClick={onHome}>← Inicio</button>
+        <button className="btn ghost" onClick={onHome}>← Home</button>
         <div>
-          <h2>Laboratorio</h2>
-          <p className="muted">{mission.nombre}{mission.presupuesto ? ` · presupuesto ${n(mission.presupuesto)} M USD` : ' · sin presupuesto ni reloj'}</p>
+          <h2>Lab</h2>
+          <p className="muted">{mission.nombre}{mission.presupuesto ? ` · budget ${n(mission.presupuesto)} M USD` : ' · no budget, no clock'}</p>
         </div>
         <label className="field inline">
-          <span>Diseños base</span>
+          <span>Base designs</span>
           <select value="" onChange={(e) => { if (e.target.value) { setTunnel(null); onChange(cloneDesign(PRESETS[e.target.value])); } }}>
-            <option value="">Cargar un diseño…</option>
+            <option value="">Load a design…</option>
             {Object.entries(PRESETS).map(([k, p]) => <option key={k} value={k}>{p.nombre}</option>)}
           </select>
         </label>
@@ -114,8 +114,8 @@ export default function Lab({ design, mission, onChange, onLaunch, onHome }: Pro
       <div className="lab-body">
         <section className="lab-col parts">
           <div className="card">
-            <h3>Carga útil</h3>
-            <label className="field"><span>Vehículo</span>
+            <h3>Payload</h3>
+            <label className="field"><span>Vehicle</span>
               <select value={design.core} onChange={(e) => edit((d) => {
                 d.core = e.target.value as CoreId;
                 d.instruments = d.instruments.slice(0, CORES[d.core].maxInstruments);
@@ -136,20 +136,20 @@ export default function Lab({ design, mission, onChange, onLaunch, onHome }: Pro
                 );
               })}
             </div>
-            <p className="note">Instrumentos: {design.instruments.length} de {core.maxInstruments}.</p>
+            <p className="note">Instruments: {design.instruments.length} of {core.maxInstruments}.</p>
             <div className="grid2">
-              <Stepper label="Paneles solares" value={design.panels} min={0} max={6} onChange={(v) => edit((d) => { d.panels = v; }, false)} />
-              <Stepper label="Baterías extra" value={design.batteries} min={0} max={6} onChange={(v) => edit((d) => { d.batteries = v; }, false)} />
+              <Stepper label="Solar panels" value={design.panels} min={0} max={6} onChange={(v) => edit((d) => { d.panels = v; }, false)} />
+              <Stepper label="Extra batteries" value={design.batteries} min={0} max={6} onChange={(v) => edit((d) => { d.batteries = v; }, false)} />
             </div>
-            <label className="field"><span>Antena</span>
+            <label className="field"><span>Antenna</span>
               <select value={design.antenna} onChange={(e) => edit((d) => { d.antenna = e.target.value as AntennaId; }, false)}>
                 {Object.entries(ANTENNAS).map(([k, a]) => <option key={k} value={k}>{a.nombre}{a.rate ? ` · ${n(a.rate, 2)} MB/s` : ''}</option>)}
               </select>
             </label>
             <div className="toggles">
-              <Toggle label="Cofia aerodinámica" on={design.fairing && design.core !== 'capsula'} disabled={design.core === 'capsula'} onChange={(v) => edit((d) => { d.fairing = v; })} />
-              <Toggle label="Escudo térmico" on={design.shield || design.core === 'capsula'} disabled={design.core === 'capsula'} onChange={(v) => edit((d) => { d.shield = v; })} />
-              <Toggle label="Paracaídas" on={design.chute && core.chuteCdA > 0} disabled={core.chuteCdA === 0} onChange={(v) => edit((d) => { d.chute = v; })} />
+              <Toggle label="Aerodynamic fairing" on={design.fairing && design.core !== 'capsula'} disabled={design.core === 'capsula'} onChange={(v) => edit((d) => { d.fairing = v; })} />
+              <Toggle label="Heat shield" on={design.shield || design.core === 'capsula'} disabled={design.core === 'capsula'} onChange={(v) => edit((d) => { d.shield = v; })} />
+              <Toggle label="Parachute" on={design.chute && core.chuteCdA > 0} disabled={core.chuteCdA === 0} onChange={(v) => edit((d) => { d.chute = v; })} />
             </div>
           </div>
 
@@ -160,39 +160,39 @@ export default function Lab({ design, mission, onChange, onLaunch, onHome }: Pro
             return (
               <div className="card" key={i}>
                 <div className="card-head">
-                  <h3>Etapa {i + 1}{i === 0 ? ' · despegue' : ''}</h3>
-                  <button className="btn tiny ghost" onClick={() => edit((d) => { d.stages.splice(i, 1); })}>Quitar</button>
+                  <h3>Stage {i + 1}{i === 0 ? ' · liftoff' : ''}</h3>
+                  <button className="btn tiny ghost" onClick={() => edit((d) => { d.stages.splice(i, 1); })}>Remove</button>
                 </div>
-                <label className="field"><span>Motor</span>
+                <label className="field"><span>Engine</span>
                   <select value={s.engine} onChange={(e) => editStage(i, (x) => { x.engine = e.target.value as EngineId; })}>
                     {Object.entries(ENGINES).map(([k, en]) => <option key={k} value={k}>{en.nombre} · {n(en.thrustVac / 1000)} kN · Isp {en.ispVac} s</option>)}
                   </select>
                 </label>
                 <p className="note">{ENGINES[s.engine].nota}</p>
-                <label className="field"><span>Depósito</span>
+                <label className="field"><span>Tank</span>
                   <select value={s.tank} onChange={(e) => editStage(i, (x) => { x.tank = e.target.value as TankId; })}>
                     {Object.entries(TANKS).map(([k, t]) => <option key={k} value={k}>{t.nombre} · Ø {n(t.diameter, 1)} m</option>)}
                   </select>
                 </label>
                 <div className="grid2">
-                  <Stepper label="Motores" value={s.engines} min={1} max={9} onChange={(v) => editStage(i, (x) => { x.engines = v; })} />
-                  <Stepper label="Depósitos" value={s.tanks} min={1} max={12} onChange={(v) => editStage(i, (x) => { x.tanks = v; })} />
+                  <Stepper label="Engines" value={s.engines} min={1} max={9} onChange={(v) => editStage(i, (x) => { x.engines = v; })} />
+                  <Stepper label="Tanks" value={s.tanks} min={1} max={12} onChange={(v) => editStage(i, (x) => { x.tanks = v; })} />
                 </div>
                 <div className="stage-stats">
                   <span>Δv <b>{n(st.dvVac)} m/s</b></span>
-                  <span><Term text="Empuje/peso" /> <b className={st.twr < 1 && i === 0 ? 'bad' : ''}>{n(st.twr, 2)}</b></span>
-                  <span>Quema <b>{n(st.burnTime)} s</b></span>
+                  <span><Term text="Thrust/weight" /> <b className={st.twr < 1 && i === 0 ? 'bad' : ''}>{n(st.twr, 2)}</b></span>
+                  <span>Burn <b>{n(st.burnTime)} s</b></span>
                 </div>
               </div>
             );
           })}
           {design.stages.length < 3 && (
             <button className="btn wide" onClick={() => edit((d) => { d.stages.unshift({ engine: 'colibri', engines: 3, tank: 't1000', tanks: 3 }); })}>
-              + Añadir etapa debajo
+              + Add stage below
             </button>
           )}
           <div className="card">
-            <h3>Material estructural</h3>
+            <h3>Structural material</h3>
             <div className="chips col">
               {(Object.keys(MATERIALS) as MaterialId[]).map((k) => (
                 <button key={k} className={`chipbtn ${design.material === k ? 'on' : ''}`} onClick={() => edit((d) => { d.material = k; })}>
@@ -205,64 +205,64 @@ export default function Lab({ design, mission, onChange, onLaunch, onHome }: Pro
 
         <section className="lab-col view">
           <canvas ref={canvasRef} className="lab-canvas" />
-          <input className="name" value={design.nombre} onChange={(e) => edit((d) => { d.nombre = e.target.value; }, false)} aria-label="Nombre de la nave" />
+          <input className="name" value={design.nombre} onChange={(e) => edit((d) => { d.nombre = e.target.value; }, false)} aria-label="Craft name" />
         </section>
 
         <section className="lab-col summary">
           {mission.requisitos && (
             <div className="card">
-              <h3>Requisitos de la misión</h3>
+              <h3>Mission requirements</h3>
               {mission.requisitos.map((r, i) => <p key={i} className="note">{r}</p>)}
             </div>
           )}
           <div className="card">
-            <h3>Resumen del vehículo</h3>
-            <Meter label="Delta-v total (vacío)" value={`${n(stats.dvVacTotal)} m/s`} pct={(stats.dvVacTotal / 12000) * 100} mark={(DV_LEO / 12000) * 100} markLabel="órbita baja" tone={stats.dvVacTotal >= DV_LEO ? 'ok' : 'warn'} />
-            <Meter label="Empuje/peso al despegue" value={n(twr, 2)} pct={(twr / 3) * 100} mark={(1 / 3) * 100} markLabel="1,0" tone={twr < 1 ? 'bad' : twr < 1.2 || twr > 2.2 ? 'warn' : 'ok'} />
-            <Meter label="Costo" value={`${n(stats.cost, 1)} M USD`} pct={mission.presupuesto ? (stats.cost / mission.presupuesto) * 100 : Math.min(100, stats.cost)} tone={overBudget ? 'bad' : 'ok'} mark={mission.presupuesto ? 100 : undefined} markLabel={mission.presupuesto ? 'tope' : undefined} />
+            <h3>Vehicle summary</h3>
+            <Meter label="Total delta-v (vacuum)" value={`${n(stats.dvVacTotal)} m/s`} pct={(stats.dvVacTotal / 12000) * 100} mark={(DV_LEO / 12000) * 100} markLabel="low orbit" tone={stats.dvVacTotal >= DV_LEO ? 'ok' : 'warn'} />
+            <Meter label="Liftoff thrust/weight" value={n(twr, 2)} pct={(twr / 3) * 100} mark={(1 / 3) * 100} markLabel="1.0" tone={twr < 1 ? 'bad' : twr < 1.2 || twr > 2.2 ? 'warn' : 'ok'} />
+            <Meter label="Cost" value={`${n(stats.cost, 1)} M USD`} pct={mission.presupuesto ? (stats.cost / mission.presupuesto) * 100 : Math.min(100, stats.cost)} tone={overBudget ? 'bad' : 'ok'} mark={mission.presupuesto ? 100 : undefined} markLabel={mission.presupuesto ? 'cap' : undefined} />
             <div className="kv">
-              <span>Masa al despegue</span><b>{n(stats.liftoffMass)} kg</b>
-              <span>Carga útil</span><b>{n(stats.payload, 1)} kg</b>
-              <span>Energía</span><b>{n(stats.solarW)} W sol · {n(stats.batteryWh)} Wh</b>
-              <span>Consumo base</span><b>{n(stats.baseW)} W</b>
-              <span>Datos</span><b>{n(stats.storageMB)} MB · {n(stats.rateMBs, 2)} MB/s</b>
+              <span>Liftoff mass</span><b>{n(stats.liftoffMass)} kg</b>
+              <span>Payload</span><b>{n(stats.payload, 1)} kg</b>
+              <span>Power</span><b>{n(stats.solarW)} W solar · {n(stats.batteryWh)} Wh</b>
+              <span>Base consumption</span><b>{n(stats.baseW)} W</b>
+              <span>Data</span><b>{n(stats.storageMB)} MB · {n(stats.rateMBs, 2)} MB/s</b>
             </div>
           </div>
 
           <div className="card">
-            <h3>Bancos de ensayo</h3>
-            <p className="note">Un ensayo no cambia la nave: revela límites que ya existen. Sin ensayar puedes volar, pero a ciegas.</p>
+            <h3>Test benches</h3>
+            <p className="note">A test does not change the craft: it reveals limits that are already there. You can fly untested, but blind.</p>
             <div className="test">
               <div>
-                <b>Mesa de vibración</b>
+                <b>Vibration table</b>
                 <p className="note">{design.tested.vibracion
-                  ? `Límite estructural: ${n(mat.qLimit / 1000)} kPa de carga aerodinámica y ${n(mat.gLimit)} g. Ahora aparece en los instrumentos de vuelo.`
-                  : 'Somete la estructura a cargas hasta encontrar su límite.'}</p>
+                  ? `Structural limit: ${n(mat.qLimit / 1000)} kPa of aerodynamic load and ${n(mat.gLimit)} g. It now shows on the flight instruments.`
+                  : 'Loads the structure until it finds its limit.'}</p>
               </div>
               <button className={`btn tiny ${design.tested.vibracion ? 'on' : ''}`} disabled={busy !== null || design.tested.vibracion} onClick={() => runTest('vibracion')}>
-                {busy === 'vibracion' ? 'Ensayando…' : design.tested.vibracion ? 'Ensayado' : 'Ensayar'}
+                {busy === 'vibracion' ? 'Testing…' : design.tested.vibracion ? 'Tested' : 'Run test'}
               </button>
             </div>
             <div className="test">
               <div>
-                <b>Túnel de viento</b>
+                <b>Wind tunnel</b>
                 <p className="note">{design.tested.tunel && tunnel
-                  ? `Coeficiente de arrastre ${n(stats.cd, 2)} sobre ${n(stats.area, 1)} m². A plena potencia la carga llegaría a ${n(tunnel.maxLoad / 1000, 1)} kPa a ${n(tunnel.alt / 1000, 1)} km y ${n(tunnel.speed)} m/s.`
-                  : design.tested.tunel ? `Coeficiente de arrastre ${n(stats.cd, 2)} sobre ${n(stats.area, 1)} m².`
-                    : 'Mide el arrastre y predice la carga máxima de un ascenso a plena potencia.'}</p>
+                  ? `Drag coefficient ${n(stats.cd, 2)} over ${n(stats.area, 1)} m². At full throttle the load would reach ${n(tunnel.maxLoad / 1000, 1)} kPa at ${n(tunnel.alt / 1000, 1)} km and ${n(tunnel.speed)} m/s.`
+                  : design.tested.tunel ? `Drag coefficient ${n(stats.cd, 2)} over ${n(stats.area, 1)} m².`
+                    : 'Measures drag and predicts the peak load of a full-throttle ascent.'}</p>
               </div>
               <button className={`btn tiny ${design.tested.tunel ? 'on' : ''}`} disabled={busy !== null || design.stages.length === 0 || (design.tested.tunel && tunnel !== null)} onClick={() => runTest('tunel')}>
-                {busy === 'tunel' ? 'Ensayando…' : design.tested.tunel && tunnel ? 'Ensayado' : 'Ensayar'}
+                {busy === 'tunel' ? 'Testing…' : design.tested.tunel && tunnel ? 'Tested' : 'Run test'}
               </button>
             </div>
           </div>
 
           <div className="card">
-            <h3>Revisión antes del lanzamiento</h3>
-            {issues.length === 0 && <p className="ok-line">Sin advertencias. El diseño es coherente.</p>}
+            <h3>Prelaunch review</h3>
+            {issues.length === 0 && <p className="ok-line">No warnings. The design is consistent.</p>}
             {issues.map((x, i) => <p key={i} className={`issue ${x.tone}`}>{x.text}</p>)}
-            <button className="btn primary wide big" disabled={blocked} onClick={onLaunch}>Llevar a la plataforma</button>
-            {!blocked && issues.some((x) => x.tone === 'bad') && <p className="note">Puedes lanzar igual. El informe explicará lo que pase.</p>}
+            <button className="btn primary wide big" disabled={blocked} onClick={onLaunch}>Roll out to the pad</button>
+            {!blocked && issues.some((x) => x.tone === 'bad') && <p className="note">You can launch anyway. The report will explain what happens.</p>}
           </div>
         </section>
       </div>
@@ -275,9 +275,9 @@ function Stepper({ label, value, min, max, onChange }: { label: string; value: n
     <div className="stepper">
       <span>{label}</span>
       <div>
-        <button className="btn tiny" disabled={value <= min} onClick={() => onChange(value - 1)} aria-label={`Menos ${label}`}>−</button>
+        <button className="btn tiny" disabled={value <= min} onClick={() => onChange(value - 1)} aria-label={`Fewer ${label}`}>−</button>
         <b>{value}</b>
-        <button className="btn tiny" disabled={value >= max} onClick={() => onChange(value + 1)} aria-label={`Más ${label}`}>+</button>
+        <button className="btn tiny" disabled={value >= max} onClick={() => onChange(value + 1)} aria-label={`More ${label}`}>+</button>
       </div>
     </div>
   );

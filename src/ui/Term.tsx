@@ -1,16 +1,16 @@
 import { useId } from 'react';
 
 const explanations: Record<string, string> = {
-  'Delta-v restante': 'Cuánto más puede cambiar su velocidad la nave con el combustible que queda; no es su velocidad actual.',
-  'Delta-v total (vacío)': 'Cambio de velocidad disponible al gastar el combustible en el vacío; sirve para estimar hasta dónde puede llegar la nave.',
-  'Periapsis': 'Punto más bajo de la órbita: si queda dentro de la atmósfera, la nave volverá a entrar en ella.',
-  'Apoapsis': 'Punto más alto de la órbita; acelerar cerca de él permite subir el punto más bajo.',
-  'T. al apoapsis': 'Tiempo que falta para llegar al punto más alto de la órbita.',
-  'Empuje/peso': 'Compara la fuerza del motor con el peso de la nave; al despegar debe ser mayor que 1.',
-  'Empuje/peso al despegue': 'Compara la fuerza de los motores con el peso inicial; con menos de 1 la nave no despega.',
-  'Prograda': 'Apunta en la dirección en la que viaja la nave; acelerar así aumenta su velocidad orbital.',
-  'Retrógrada': 'Apunta contra la dirección de viaje; encender el motor así frena la nave.',
-  'Carga aerodinámica': 'Esfuerzo que causa el aire sobre la nave; girar de lado durante el ascenso lo aumenta.',
+  'Delta-v left': 'How much more the craft can change its speed with the propellant it has left; it is not its current speed.',
+  'Total delta-v (vacuum)': 'Change in speed available from burning all the propellant in vacuum; use it to estimate how far the craft can go.',
+  'Periapsis': 'Lowest point of the orbit: if it is inside the atmosphere, the craft will fall back into it.',
+  'Apoapsis': 'Highest point of the orbit; speeding up near it raises the lowest point.',
+  'Time to apoapsis': 'Time left until the craft reaches the highest point of its orbit.',
+  'Thrust/weight': 'Compares engine force with the weight of the craft; at liftoff it must be greater than 1.',
+  'Liftoff thrust/weight': 'Compares engine force with the starting weight; below 1 the craft does not lift off.',
+  'Prograde': 'Points the way the craft is traveling; thrusting like this increases its orbital speed.',
+  'Retrograde': 'Points against the direction of travel; firing the engine like this slows the craft down.',
+  'Aerodynamic load': 'Stress the air puts on the craft; turning sideways during ascent increases it.',
 };
 
 export default function Term({ text }: { text: string }) {

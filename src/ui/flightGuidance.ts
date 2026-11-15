@@ -9,35 +9,35 @@ export interface GuideState {
 
 export function flightGuide(h: GuideState) {
   if (!h.launched) return {
-    step: 1, title: 'Enciende los motores',
+    step: 1, title: 'Ignite the engines',
     text: h.throttle > 0 && h.twr < 1
-      ? 'El empuje/peso no alcanza 1: vuelve al laboratorio y añade empuje o reduce masa.'
-      : 'Pulsa Espacio para encender a plena potencia. Primero sube en vertical.',
+      ? 'Thrust/weight is below 1: go back to the lab and add thrust or cut mass.'
+      : 'Press Space to ignite at full throttle. Climb vertically first.',
   };
   const orbit = h.orbiting && h.pe > 150e3;
   if (orbit) {
-    if (!h.free) return { step: 5, title: 'Libera el satélite', text: 'Pulsa X para cortar el motor y Espacio para soltar la última etapa. No necesitas gastar el combustible restante.' };
+    if (!h.free) return { step: 5, title: 'Release the satellite', text: 'Press X to cut the engine and Space to drop the last stage. You do not need to burn the remaining propellant.' };
     if (!h.deployed) return {
-      step: 6, title: 'Despliega paneles y antena',
-      text: h.canDeploy ? 'Pulsa G o el botón Desplegar en Sistemas.'
-        : h.fairing ? 'Espera a que se suelte la cofia; protege al satélite durante el ascenso.'
-        : 'Espera a estar sin empuje y fuera del aire denso. Entonces podrás pulsar G.',
+      step: 6, title: 'Deploy panels and antenna',
+      text: h.canDeploy ? 'Press G or the Deploy button under Systems.'
+        : h.fairing ? 'Wait for the fairing to come off; it protects the satellite during ascent.'
+        : 'Wait until there is no thrust and you are out of dense air. Then you can press G.',
     };
-    return { step: 6, title: '¡Primer vuelo completado!', text: 'Ya estás en órbita con el satélite desplegado. Abre Ciencia, toma una medición y transmite cuando tengas enlace.' };
+    return { step: 6, title: 'First flight complete!', text: 'You are in orbit with the satellite deployed. Open Science, take a measurement and transmit when you have a link.' };
   }
-  if (h.free) return { step: 4, title: 'La nave quedó sin motor', text: 'El periapsis aún no supera 150 km. Para intentarlo de nuevo, vuelve al laboratorio y conserva la última etapa hasta alcanzar la órbita.' };
+  if (h.free) return { step: 4, title: 'The craft has no engine left', text: 'The periapsis is not above 150 km yet. To try again, go back to the lab and keep the last stage until you reach orbit.' };
   if (h.stages.some((s) => s.active && s.fill <= 0)) return {
-    step: 3, title: 'Separa la etapa agotada', text: 'Pulsa Espacio para soltarla y activar la siguiente. Si era la última, necesitarás más delta-v en tu próximo diseño.',
+    step: 3, title: 'Separate the spent stage', text: 'Press Space to drop it and activate the next one. If it was the last one, your next design will need more delta-v.',
   };
   if (h.ap >= 160e3 && h.vr > 0 && h.toAp > 35) return {
-    step: 4, title: 'Espera cerca del apoapsis', text: 'Pulsa X para cortar el motor. Espera hasta que T. al apoapsis baje a unos 35 s; aún necesitas velocidad horizontal para entrar en órbita.',
+    step: 4, title: 'Wait near the apoapsis', text: 'Press X to cut the engine. Wait until Time to apoapsis drops to about 35 s; you still need horizontal speed to get into orbit.',
   };
   if (h.alt >= 100e3 || (h.ap >= 160e3 && h.toAp <= 35)) return {
-    step: 4, title: 'Eleva el periapsis', text: 'Selecciona Prograda y pulsa Z para acelerar cerca del apoapsis. Usa W/S para ajustar potencia hasta que el periapsis supere 150 km. P activa la ayuda automática de ascenso.',
+    step: 4, title: 'Raise the periapsis', text: 'Select Prograde and press Z to thrust near the apoapsis. Use W/S to adjust throttle until the periapsis is above 150 km. P turns on the ascent autopilot.',
   };
   return {
-    step: 2, title: h.alt < 1000 ? 'Gana altura' : 'Inclina hacia el este',
-    text: h.alt < 1000 ? 'Mantén la nave vertical durante los primeros segundos. Vigila las cargas; W/S ajusta la potencia.'
-      : 'Mantén D brevemente para inclinar poco a poco hacia el este. Gana velocidad horizontal sin girar de golpe; busca un apoapsis por encima de 160 km. P activa la ayuda automática.',
+    step: 2, title: h.alt < 1000 ? 'Gain altitude' : 'Tilt east',
+    text: h.alt < 1000 ? 'Keep the craft vertical for the first few seconds. Watch the loads; W/S adjusts the throttle.'
+      : 'Hold D briefly to tilt east little by little. Build horizontal speed without turning sharply; aim for an apoapsis above 160 km. P turns on the autopilot.',
   };
 }

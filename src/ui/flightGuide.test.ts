@@ -16,29 +16,29 @@ const orbit: GuideState = { ...ascent, alt: 200e3, pe: 180e3, ap: 220e3, orbitin
 describe('guía del primer vuelo', () => {
   it('lleva de encendido a inclinación según el vuelo real', () => {
     expect(flightGuide(pad).step).toBe(1);
-    expect(flightGuide({ ...ascent, alt: 500 }).title).toBe('Gana altura');
-    expect(flightGuide(ascent).title).toBe('Inclina hacia el este');
-    expect(flightGuide({ ...pad, throttle: 1, twr: 0.8 }).text).toContain('laboratorio');
+    expect(flightGuide({ ...ascent, alt: 500 }).title).toBe('Gain altitude');
+    expect(flightGuide(ascent).title).toBe('Tilt east');
+    expect(flightGuide({ ...pad, throttle: 1, twr: 0.8 }).text).toContain('lab');
   });
   it('prioriza separar una etapa agotada antes de seguir acelerando', () => {
     expect(flightGuide({ ...ascent, alt: 110e3, stages: [{ fill: 0, active: true, gone: false }] }).step).toBe(3);
     expect(flightGuide({ ...ascent, stages: [{ fill: 0, active: false, gone: true }, { fill: 1, active: true, gone: false }] }).step).toBe(2);
   });
   it('distingue costa y circularización sin confundir altura con órbita', () => {
-    expect(flightGuide({ ...ascent, ap: 180e3, vr: 500, toAp: 100 }).title).toBe('Espera cerca del apoapsis');
-    expect(flightGuide({ ...ascent, alt: 170e3, ap: 180e3, toAp: 25 }).title).toBe('Eleva el periapsis');
+    expect(flightGuide({ ...ascent, ap: 180e3, vr: 500, toAp: 100 }).title).toBe('Wait near the apoapsis');
+    expect(flightGuide({ ...ascent, alt: 170e3, ap: 180e3, toAp: 25 }).title).toBe('Raise the periapsis');
     expect(flightGuide({ ...orbit, orbiting: false }).step).toBe(4);
   });
   it('no pide soltar la última etapa hasta alcanzar órbita', () => {
     expect(flightGuide(orbit).step).toBe(5);
-    expect(flightGuide({ ...ascent, free: true }).title).toBe('La nave quedó sin motor');
+    expect(flightGuide({ ...ascent, free: true }).title).toBe('The craft has no engine left');
   });
   it('espera las condiciones de despliegue y reconoce el final', () => {
     const satellite = { ...orbit, free: true };
-    expect(flightGuide({ ...satellite, fairing: true }).text).toContain('cofia');
-    expect(flightGuide(satellite).text).toContain('sin empuje');
-    expect(flightGuide({ ...satellite, canDeploy: true }).text).toContain('Pulsa G');
-    expect(flightGuide({ ...satellite, deployed: true }).title).toBe('¡Primer vuelo completado!');
+    expect(flightGuide({ ...satellite, fairing: true }).text).toContain('fairing');
+    expect(flightGuide(satellite).text).toContain('no thrust');
+    expect(flightGuide({ ...satellite, canDeploy: true }).text).toContain('Press G');
+    expect(flightGuide({ ...satellite, deployed: true }).title).toBe('First flight complete!');
   });
 
   it('acompaña el preset CubeSat desde la plataforma hasta el despliegue en órbita', () => {
@@ -71,6 +71,6 @@ describe('guía del primer vuelo', () => {
     expect(currentGuide().step).toBe(6);
     expect(canDeploy(f)).toBe(true);
     deploy(f);
-    expect(currentGuide().title).toBe('¡Primer vuelo completado!');
+    expect(currentGuide().title).toBe('First flight complete!');
   });
 });

@@ -4,11 +4,11 @@ import { InstrumentId } from './catalog';
 export type ContextId = 'superficie' | 'atm_baja' | 'atm_alta' | 'espacio_cercano' | 'espacio_alto';
 
 export const CONTEXTS: Record<ContextId, string> = {
-  superficie: 'Superficie',
-  atm_baja: 'Atmósfera baja',
-  atm_alta: 'Atmósfera alta',
-  espacio_cercano: 'Espacio cercano',
-  espacio_alto: 'Espacio alto',
+  superficie: 'Surface',
+  atm_baja: 'Lower atmosphere',
+  atm_alta: 'Upper atmosphere',
+  espacio_cercano: 'Near space',
+  espacio_alto: 'High space',
 };
 
 export function contextOf(alt: number, landed: boolean): ContextId {
@@ -48,7 +48,7 @@ export function airPressure(alt: number): number {
 }
 
 function fmt(n: number, d = 1): string {
-  return n.toLocaleString('es-CO', { maximumFractionDigits: d, minimumFractionDigits: d });
+  return n.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
 }
 
 /** Lectura del instrumento con valores calculados por la simulación. */
@@ -57,27 +57,27 @@ export function reading(inst: InstrumentId, alt: number, r: number, sunlit: bool
   switch (inst) {
     case 'termo': {
       if (alt > 100e3) {
-        return `Presión prácticamente cero. Sin aire, la temperatura depende de la luz: la nave está ${sunlit ? 'al sol' : 'en sombra'}.`;
+        return `Pressure practically zero. With no air, temperature depends on light: the craft is ${sunlit ? 'in sunlight' : 'in shadow'}.`;
       }
       const hpa = airPressure(alt) / 100;
-      return `${fmt(airTemperature(alt))} °C y ${fmt(hpa, hpa < 10 ? 2 : 0)} hPa a ${fmt(km)} km.`;
+      return `${fmt(airTemperature(alt))} °C and ${fmt(hpa, hpa < 10 ? 2 : 0)} hPa at ${fmt(km)} km.`;
     }
     case 'camara':
-      if (alt < 50) return 'Fotografía de la plataforma de lanzamiento.';
-      if (alt < 100e3) return `Imagen del horizonte a ${fmt(km)} km: ya se nota la curvatura.`;
-      return `Imagen de la Tierra desde ${fmt(km, 0)} km. Horizonte visible a ${fmt(Math.sqrt(2 * RE * alt + alt * alt) / 1000, 0)} km.`;
+      if (alt < 50) return 'Photo of the launch pad.';
+      if (alt < 100e3) return `Image of the horizon at ${fmt(km)} km: the curvature is already visible.`;
+      return `Image of Earth from ${fmt(km, 0)} km. Horizon visible at ${fmt(Math.sqrt(2 * RE * alt + alt * alt) / 1000, 0)} km.`;
     case 'radiacion': {
       // Dosis aproximada: crece con la altitud y se dispara en los cinturones de Van Allen.
       let dose = 0.1 + 6 * Math.min(km, 20) / 12;
       if (km > 20) dose = 10 + 12 * Math.min((km - 20) / 400, 1);
       if (km > 1000) dose = 22 + 2000 * Math.min((km - 1000) / 2500, 1);
-      const extra = km > 1000 ? ' Estás entrando a los cinturones de Van Allen.' : '';
-      return `Dosis de ${fmt(dose)} µSv/h a ${fmt(km, 0)} km.${extra}`;
+      const extra = km > 1000 ? ' You are entering the Van Allen belts.' : '';
+      return `Dose of ${fmt(dose)} µSv/h at ${fmt(km, 0)} km.${extra}`;
     }
     case 'magneto': {
       // Campo dipolar en el ecuador: 31 µT en superficie, cae con el cubo de la distancia.
       const b = 31 * (RE / r) ** 3;
-      return `Campo magnético de ${fmt(b)} µT a ${fmt(km, 0)} km.`;
+      return `Magnetic field of ${fmt(b)} µT at ${fmt(km, 0)} km.`;
     }
   }
 }
