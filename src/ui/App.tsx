@@ -6,11 +6,12 @@ import { Design, cloneDesign } from '../sim/vehicle';
 import Atlas from './Atlas';
 import Flight from './Flight';
 import Home from './Home';
+import Lander from './Lander';
 import Lab from './Lab';
 import MissionControl from './MissionControl';
 import Report from './Report';
 
-type Screen = 'home' | 'lab' | 'flight' | 'report' | 'atlas';
+type Screen = 'home' | 'lab' | 'flight' | 'report' | 'atlas' | 'luna';
 
 const DESIGN_KEY = 'ascenso.diseno.v1';
 const LOG_KEY = 'ascenso.bitacora.v1';
@@ -47,7 +48,7 @@ export default function App() {
   const start = (id: string) => {
     setMissionId(id);
     if (!designs[id]) setDesigns((all) => ({ ...all, [id]: cloneDesign(MISSIONS[id].preset) }));
-    setScreen('lab');
+    setScreen(id === 'luna' ? 'luna' : 'lab');
   };
 
   const finish = (f: FlightState) => {
@@ -57,7 +58,9 @@ export default function App() {
     setScreen('report');
   };
 
-  const launch = () => { setFlightKey((k) => k + 1); setScreen('flight'); };
+  const launch = () => { setFlightKey((k) => k + 1); setScreen(missionId === 'luna' ? 'luna' : 'flight'); };
+  // La misión lunar arma su propio informe.
+  const finishLuna = (r: ReportData) => { setReport(r); setLogbook((l) => [r, ...l].slice(0, 40)); setScreen('report'); };
 
   // El Atlas compara los destinos con la nave del juego libre.
   const atlasDesign = designs.sandbox ?? MISSIONS.sandbox.preset;
@@ -68,7 +71,9 @@ export default function App() {
   } else if (screen === 'flight') {
     view = <Flight key={flightKey} design={design} mission={mission} onEnd={finish} onBack={() => setScreen('lab')} />;
   } else if (screen === 'report' && report) {
-    view = <Report report={report} onRetry={launch} onLab={() => setScreen('lab')} onHome={() => setScreen('home')} />;
+    view = <Report report={report} onRetry={launch} onLab={missionId === 'luna' ? undefined : () => setScreen('lab')} onHome={() => setScreen('home')} />;
+  } else if (screen === 'luna') {
+    view = <Lander key={flightKey} onEnd={finishLuna} onHome={() => setScreen('home')} />;
   } else if (screen === 'atlas') {
     view = <Atlas design={atlasDesign} onHome={() => setScreen('home')} onLab={() => start('sandbox')} />;
   } else {

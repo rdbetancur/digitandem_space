@@ -1,3 +1,4 @@
+import { LUNA } from '../sim/luna';
 import { Report as ReportData } from '../sim/report';
 
 const n = (x: number, d = 0) => x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
@@ -8,7 +9,7 @@ const TAG: Record<ReportData['resultado'], string> = { exito: 'Success', parcial
 interface Props {
   report: ReportData;
   onRetry: () => void;
-  onLab: () => void;
+  onLab?: () => void;
   onHome: () => void;
 }
 
@@ -67,14 +68,17 @@ export default function Report({ report, onRetry, onLab, onHome }: Props) {
                 </ul>
               </section>
             )}
-            <section className="card">
-              <h3>Science</h3>
-              <div className="kv">
-                <span>Measurements</span><b>{report.ciencia.mediciones}</b>
-                <span>Collected</span><b>{n(report.ciencia.obtenida, 1)}</b>
-                <span>Delivered to Earth</span><b>{n(report.ciencia.entregada, 1)}</b>
-              </div>
-            </section>
+            {/* La misión lunar no lleva instrumentos: su agua y oxígeno van en la telemetría. */}
+            {report.mision !== LUNA.nombre && (
+              <section className="card">
+                <h3>Science</h3>
+                <div className="kv">
+                  <span>Measurements</span><b>{report.ciencia.mediciones}</b>
+                  <span>Collected</span><b>{n(report.ciencia.obtenida, 1)}</b>
+                  <span>Delivered to Earth</span><b>{n(report.ciencia.entregada, 1)}</b>
+                </div>
+              </section>
+            )}
             <section className="card">
               <h3>Telemetry</h3>
               <div className="kv">
@@ -86,7 +90,7 @@ export default function Report({ report, onRetry, onLab, onHome }: Props) {
 
         <footer className="report-actions">
           <button className="btn primary" onClick={onRetry}>Fly again</button>
-          <button className="btn" onClick={onLab}>Modify the craft</button>
+          {onLab && <button className="btn" onClick={onLab}>Modify the craft</button>}
           <button className="btn ghost" onClick={onHome}>Home</button>
         </footer>
       </div>

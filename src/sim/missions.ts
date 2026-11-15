@@ -1,5 +1,6 @@
 import { ATM_TOP, KARMAN, RE } from './constants';
 import { Flight, Vec, orbitOf, payloadOnly } from './flight';
+import { LUNA } from './luna';
 import { OJO } from './ojo';
 import { Design, PRESETS } from './vehicle';
 
@@ -98,6 +99,7 @@ export const MISSIONS: Record<string, Mission> = {
     ],
   },
   ojo: OJO,
+  luna: LUNA,
 };
 
 /**
