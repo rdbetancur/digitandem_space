@@ -6,6 +6,7 @@ import { DesignDiff, LIMITS, SharePayload, SharedResult, TIP_TAGS, compareDesign
 import { Design, computeStats } from '../sim/vehicle';
 import { CREW_MAX, NAME_MAX, ROLES, Role, cleanCrew, crewFor, loadCrew, roleName, rolesBySeat } from './crew';
 import { RankEntry, SORTS, SortKey, rank } from './ranking';
+import { seatNames, useRoom } from './room/room';
 import './team.css';
 
 const n = (x: number, d = 0) => x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
@@ -14,9 +15,18 @@ const n = (x: number, d = 0) => x.toLocaleString('en-US', { maximumFractionDigit
 
 /** Small name tag beside a panel title: who owns this panel. Renders nothing without a crew. */
 export function CrewTag({ role }: { role: Role }) {
-  const name = useMemo(() => crewFor(loadCrew(), role), [role]);
-  if (!name) return null;
-  return <span className="crew-tag" title={`${roleName(role)}: ${name}`}><i>{roleName(role)}</i>{name}</span>;
+  const room = useRoom();
+  const local = useMemo(() => crewFor(loadCrew(), role), [role]);
+  // With a mission room open, the tag shows who sits at that station right now.
+  if (room.role === 'host' && room.status === 'open' && room.members.length > 1) {
+    const seat = role === 'director' ? 'navigator' : role;
+    const names = seatNames(room.members, seat);
+    if (!names) return null;
+    const label = seat === 'navigator' ? 'Navigator' : roleName(role);
+    return <span className="crew-tag" title={`${label}: ${names}`}><i>{label}</i>{names}</span>;
+  }
+  if (!local) return null;
+  return <span className="crew-tag" title={`${roleName(role)}: ${local}`}><i>{roleName(role)}</i>{local}</span>;
 }
 
 /** One-line crew roster, for the Lab and the report. */

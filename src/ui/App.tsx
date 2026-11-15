@@ -14,6 +14,9 @@ import MissionControl from './MissionControl';
 import Report from './Report';
 import { BadLinkNotice, CrewStrip, FlightBoard, ShareButton, SharedBanner } from './Team';
 import { loadCrew, saveCrew } from './crew';
+import { GuestScreen, RoomCard, RoomPill } from './room/RoomUI';
+import { normalizeCode } from './room/protocol';
+import { roomJoin, roomPublishIdle, roomState, useRoom } from './room/room';
 import { RankEntry, addEntry, entryFromShare, loadRanking, newId, saveRanking } from './ranking';
 
 type Screen = 'home' | 'lab' | 'flight' | 'report' | 'atlas' | 'luna';
@@ -49,6 +52,8 @@ export default function App() {
   const [shared, setShared] = useState<{ payload: SharePayload; previous: Design | null } | null>(null);
   const [badLink, setBadLink] = useState(false);
   const [lastEntry, setLastEntry] = useState<RankEntry | null>(null);
+  // Sala de misión: multijugador en vivo con invitados.
+  const room = useRoom();
 
   const mission = MISSIONS[missionId];
   const design = designs[missionId] ?? mission.preset;
@@ -80,6 +85,20 @@ export default function App() {
     open();
     window.addEventListener('hashchange', open);
     return () => window.removeEventListener('hashchange', open);
+  }, []);
+
+  // Un enlace de invitación (#room=CÓDIGO) entra a la sala como invitado, sin cuenta.
+  useEffect(() => {
+    const join = () => {
+      if (!window.location.hash.startsWith('#room=')) return;
+      const code = normalizeCode(window.location.hash);
+      try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch { /* sin historial */ }
+      if (code) void roomJoin(code, roomState().name);
+      else setBadLink(true);
+    };
+    join();
+    window.addEventListener('hashchange', join);
+    return () => window.removeEventListener('hashchange', join);
   }, []);
 
   const setDesign = (d: Design) => setDesigns((all) => ({ ...all, [missionId]: d }));
@@ -135,6 +154,16 @@ export default function App() {
 
   // El Atlas compara los destinos con la nave del juego libre.
   const atlasDesign = designs.sandbox ?? MISSIONS.sandbox.preset;
+  // El piloto cuenta a los invitados qué está haciendo cuando no vuela.
+  useEffect(() => {
+    roomPublishIdle({
+      screen: screen === 'home' || screen === 'lab' || screen === 'report' ? screen : 'other',
+      missionName: mission.nombre,
+      design: screen === 'lab' ? design : null,
+      result: report ? { titulo: report.titulo, puntaje: report.puntaje, resultado: report.resultado } : null,
+    });
+  }, [screen, mission, design, report, room.members.length]);
+
   let view: JSX.Element;
   let shown: Screen = screen;
   if (screen === 'lab') {
@@ -179,15 +208,21 @@ export default function App() {
         extra={(
           <>
             {badLink && <BadLinkNotice onDismiss={() => setBadLink(false)} />}
+            <RoomCard />
             <FlightBoard entries={ranking} crew={crew} onLoad={loadEntry} onClear={() => setRanking([])} />
           </>
         )}
       />
     );
   }
+  // Un invitado ve la sala en lugar del juego propio; al salir vuelve a su partida.
+  if (room.role === 'guest') {
+    return <GuestScreen />;
+  }
   return (
     <>
       {view}
+      <RoomPill />
       <MissionControl screen={shown} mission={mission} design={shown === 'atlas' ? atlasDesign : design} report={report} />
     </>
   );

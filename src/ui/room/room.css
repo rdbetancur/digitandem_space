@@ -1,0 +1,72 @@
+/* ---------- Mission room ---------- */
+.room-card.live { border-color: rgba(90, 220, 160, 0.55); }
+.room-name { max-width: 280px; margin: 0; }
+.room-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.room-option { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(10, 15, 26, 0.55); }
+.room-option b { font-size: 15px; }
+.room-option span { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+.room-join { display: flex; gap: 8px; }
+.room-join input { font-family: var(--mono); letter-spacing: 0.18em; text-transform: uppercase; }
+.room-code-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.room-code { font-family: var(--mono); font-size: 34px; font-weight: 800; letter-spacing: 0.2em; color: var(--accent); padding: 6px 16px; border-radius: 12px; border: 1px dashed rgba(255, 179, 71, 0.6); background: rgba(255, 179, 71, 0.07); user-select: all; }
+.room-code-row .share-link { flex: 1; min-width: 260px; margin: 0; }
+.room-roster { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 6px; }
+.room-roster li { display: grid; grid-template-columns: 12px 1fr; column-gap: 8px; align-items: center; padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; font-size: 13px; background: rgba(10, 15, 26, 0.55); }
+.room-roster li b, .room-roster li i { grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-roster li i { font-style: normal; font-size: 11.5px; color: var(--muted); }
+.room-roster li.me { border-color: rgba(255, 179, 71, 0.5); }
+.room-roster li.free { border-style: dashed; opacity: 0.6; }
+.seat-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); grid-row: span 2; }
+.seat-dot.pilot { background: var(--accent); } .seat-dot.navigator { background: var(--accent-2); }
+.seat-dot.engineer { background: var(--warn); } .seat-dot.scientist { background: var(--ok); }
+.room-notes { display: flex; flex-direction: column; gap: 6px; }
+.room-notes-list { display: flex; flex-direction: column; gap: 3px; max-height: 120px; overflow-y: auto; font-size: 12.5px; line-height: 1.4; }
+.room-notes-list p { overflow-wrap: anywhere; }
+.room-notes-list b { color: var(--accent); margin-right: 5px; }
+.room-notes-send { display: flex; gap: 6px; }
+.room-notes-send input { padding: 5px 9px; font-size: 12.5px; }
+.live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); margin-right: 7px; box-shadow: 0 0 0 0 rgba(90, 220, 160, 0.7); animation: room-pulse 1.8s ease-out infinite; }
+@keyframes room-pulse { 70% { box-shadow: 0 0 0 7px rgba(90, 220, 160, 0); } 100% { box-shadow: 0 0 0 0 rgba(90, 220, 160, 0); } }
+
+/* Pilot's pill */
+.room-pill { position: fixed; top: 12px; right: 12px; z-index: 40; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: min(340px, calc(100vw - 24px)); }
+.room-pill-btn { display: inline-flex; align-items: center; background: rgba(8, 22, 18, 0.94); border: 1px solid rgba(90, 220, 160, 0.6); color: #c9f5df; border-radius: 999px; padding: 6px 13px; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.room-pill-btn b { font-family: var(--mono); letter-spacing: 0.1em; margin: 0 4px; color: #fff; }
+.room-feed { background: rgba(8, 22, 18, 0.94); border: 1px solid rgba(90, 220, 160, 0.45); color: #c9f5df; border-radius: 10px; padding: 6px 11px; font-size: 12.5px; line-height: 1.4; animation: room-in 0.25s ease-out; }
+@keyframes room-in { from { opacity: 0; transform: translateY(-4px); } }
+.room-pill-body { width: 320px; max-width: calc(100vw - 24px); background: #0b1120; border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55); }
+.room-pill-body .room-roster { grid-template-columns: 1fr; }
+
+/* Guest lobby */
+.room-lobby { min-height: 100%; background: radial-gradient(900px 500px at 50% 0%, #0f1a30, var(--bg)); padding: 40px 20px; display: flex; justify-content: center; align-items: flex-start; }
+.room-lobby-card { width: min(560px, 100%); background: var(--panel-solid); border: 1px solid var(--line); border-radius: 14px; padding: 26px; display: flex; flex-direction: column; gap: 12px; }
+.room-lobby-card.wide { width: min(860px, 100%); }
+.room-lobby-card h1 { font-size: 30px; }
+.room-lobby-card h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-top: 6px; }
+.room-lobby-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.room-lobby-grid .room-roster { grid-template-columns: 1fr; }
+.room-result { font-size: 14px; color: #c6d2e6; }
+.seat-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.seat-btn { display: flex; flex-direction: column; gap: 2px; text-align: left; background: #0a0f1a; border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; cursor: pointer; min-width: 0; }
+.seat-btn b { font-size: 13px; }
+.seat-btn span { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seat-btn.on { border-color: var(--accent); background: rgba(255, 179, 71, 0.12); }
+.seat-btn.on span { color: #ffd9a0; }
+.room-craft { display: grid; grid-template-columns: 160px 1fr; gap: 16px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(#0a1222, #070b14); }
+.room-craft canvas { width: 160px; height: 220px; }
+
+/* Guest flight view */
+.room-chip { border-color: rgba(90, 220, 160, 0.6); background: rgba(8, 22, 18, 0.9); color: #c9f5df; }
+.room-station { width: 290px; max-height: calc(100vh - 90px); overflow-y: auto; }
+.room-station .seat-picker { grid-template-columns: 1fr; }
+.room-station .seat-btn { flex-direction: row; justify-content: space-between; align-items: center; }
+.room-station .btn.wide { margin-top: 8px; }
+.room-guest .hud.toast.room-toast { background: rgba(8, 22, 18, 0.94); border-color: rgba(90, 220, 160, 0.5); color: #c9f5df; }
+.room-guest .hud-right { display: block; }
+
+@media (max-width: 900px) {
+  .room-guest .hud-left { display: none; }
+  .room-station { top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: 46vh; }
+  .room-craft { grid-template-columns: 1fr; }
+  .room-pill { top: auto; bottom: 64px; }
+}

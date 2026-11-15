@@ -15,6 +15,7 @@ import FlightGuide from './FlightGuide';
 import { describeFlight, setFlightContext } from './missionControlContext';
 import Term from './Term';
 import { CrewTag } from './Team';
+import { roomBindFlight, roomFlightTick } from './room/room';
 import { isMapView, updateCamera, zoomCamera } from './flightCamera';
 import { circularizationEstimate } from './circularization';
 import { isMuted, playCrash, playCue, playTouchdown, setEngine, setMuted, unlockAudio } from './audio';
@@ -145,6 +146,11 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
     f.autopilot = false;
   };
   const doMeasure = (i: InstrumentId) => say(measure(flightRef.current, i));
+  // Sala de misión: los invitados ven este vuelo y operan sus estaciones.
+  useEffect(() => roomBindFlight({
+    flight: () => flightRef.current, missionId: mission.id, getWarp: () => warpRef.current,
+    setWarp: (w) => { warpRef.current = Math.min(w, maxWarp(flightRef.current)); }, paused: () => pausedRef.current,
+  }), [mission.id]);
   const toggleTx = () => {
     const f = flightRef.current;
     if (f.transmitting) { f.transmitting = false; return; }
@@ -299,6 +305,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       updateCamera(cam, real, Math.atan2(f.r.y, f.r.x));
       render(ctx, canvas.clientWidth, canvas.clientHeight, f, cam, time, particles.current, mission.target?.pos(f.t));
       if (now - hudAt > 90) { hudAt = now; setHud(snapshot(f, mission, warpRef.current)); }
+      roomFlightTick(now);
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);

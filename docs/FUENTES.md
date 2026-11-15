@@ -185,12 +185,14 @@ The NASA Glenn links still need to be checked one by one before submission.
 | Vite, @vitejs/plugin-react | MIT |
 | TypeScript | Apache 2.0 |
 | Vitest | MIT |
+| [PeerJS](https://peerjs.com/) | MIT |
 
 ## External services
 
 | Service | Use |
 | --- | --- |
 | [Gemini API](https://ai.google.dev/gemini-api/docs), Gemini 3.8 Flash model (Google) | Optional "Mission Control" assistant. It is only called when the player asks a question. |
+| [PeerJS](https://peerjs.com/) public broker (PeerServer Cloud) and public STUN/TURN servers | Optional mission room. Only used when a player opens or joins a room, to let the browsers find each other; the flight data then travels directly between them (WebRTC). No game data is stored. |
 
 ## Live NASA data and imagery
 
