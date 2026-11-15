@@ -25,9 +25,6 @@ orbit and do science. Every engineering decision has a visible physical conseque
 - **"Eye on Earth" challenge**: track a wildfire from orbit. Altitude decides how detailed
   the images are and how much link time you get to downlink them.
 - **"First CubeSat" challenge** with six objectives, and a **free play mode** with no budget or clock.
-- **Crew of up to four**: type your names on the home screen and each player owns a role
-  (mission director, engineer, pilot, scientist). Names appear on the panels each one is
-  responsible for, in the Lab, in flight and on the report.
 - **Share designs and flights by link**: the whole craft travels inside the URL, with your name,
   your advice and what the design is good at. Whoever opens it lands in the Lab with that craft,
   can compare it with their own, change it and send it back. No account or server.

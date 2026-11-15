@@ -12,7 +12,7 @@ import Lander from './Lander';
 import Lab from './Lab';
 import MissionControl from './MissionControl';
 import Report from './Report';
-import { BadLinkNotice, CrewCard, CrewStrip, FlightBoard, ShareButton, SharedBanner } from './Team';
+import { BadLinkNotice, CrewStrip, FlightBoard, ShareButton, SharedBanner } from './Team';
 import { loadCrew, saveCrew } from './crew';
 import { RankEntry, addEntry, entryFromShare, loadRanking, newId, saveRanking } from './ranking';
 
@@ -44,7 +44,7 @@ export default function App() {
   const [report, setReport] = useState<ReportData | null>(null);
   const [flightKey, setFlightKey] = useState(0);
   // Equipo: tripulación, diseño recibido por enlace y tablero de vuelos.
-  const [crew, setCrew] = useState<string[]>(loadCrew);
+  const [crew] = useState<string[]>(loadCrew);
   const [ranking, setRanking] = useState<RankEntry[]>(loadRanking);
   const [shared, setShared] = useState<{ payload: SharePayload; previous: Design | null } | null>(null);
   const [badLink, setBadLink] = useState(false);
@@ -179,7 +179,6 @@ export default function App() {
         extra={(
           <>
             {badLink && <BadLinkNotice onDismiss={() => setBadLink(false)} />}
-            <CrewCard crew={crew} onChange={setCrew} />
             <FlightBoard entries={ranking} crew={crew} onLoad={loadEntry} onClear={() => setRanking([])} />
           </>
         )}
