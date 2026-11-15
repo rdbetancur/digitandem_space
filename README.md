@@ -4,9 +4,9 @@ A space mission design game for the **Space Mission Design Game** challenge of t
 NASA Space Apps Challenge 2026. You design a craft, put it to the test, fly it to
 orbit and do science. Every engineering decision has a visible physical consequence.
 
-> Working title.
+**Play it now:** https://digitandem-space.vercel.app (runs in any browser, no install or account).
 
-## What this version includes (0.1)
+## What's in the game
 
 - **Lab**: payload, instruments, power, antenna, up to three stages, three materials,
   and a live review of mass, delta-v, thrust/weight, cost, power and data.
@@ -24,7 +24,15 @@ orbit and do science. Every engineering decision has a visible physical conseque
   power, and the delta-v and launch window to get there, compared with your craft.
 - **"Eye on Earth" challenge**: track a wildfire from orbit. Altitude decides how detailed
   the images are and how much link time you get to downlink them.
-- **"First CubeSat" challenge** with six objectives, and a **free play mode** with no budget or clock.
+- **"First CubeSat" challenge** with six objectives and a step-by-step flight guide, and a
+  **free play mode** with no budget or clock.
+- **"Ice in the shadows" (the Moon)**: land at the lunar south pole with only your engine to
+  brake, over shaded terrain built from LRO LOLA elevation data. Below 2 km the landing assist
+  flies you down, but it can aim at a boulder field, as on Apollo 11: move the landing point onto
+  clear ground before the hover propellant runs out. Then keep a crew of two alive for 10 days
+  by turning crater ice into oxygen.
+- **Sound**: synthesized engine roar, alert tones, and touchdown and crash sounds in every
+  mission, made in the browser with no audio files (N mutes it).
 - **Mission room (live multiplayer, 2 to 4 players)**: one player pilots and opens a room; the
   others join from their own computers with a code or a link, as guests with no account. Each
   takes a station and operates the same flight live: the navigator sets the attitude hold and
@@ -61,8 +69,27 @@ npm run build    # production build in dist/
 | , / . | Time warp |
 | M · wheel | Orbital map · zoom |
 | G | Deploy · stow panels and antenna |
+| N | Sound on · off |
+| U | Clean view: hide the interface (for recording) |
+| H | Show the controls |
 | Esc | Pause |
 | C · 1–4 | Science panel · use instrument |
+
+## Moon landing controls
+
+| Key | Action |
+| --- | --- |
+| W / S | Throttle up · down |
+| Z / X | Full throttle · cut engine |
+| A / D | Tilt the thrust back · forward (manual) |
+| T | Assistance: manual, braking, vertical |
+| L | Landing assist (below 2 km) |
+| ← / → | With the landing assist: move the landing point off the boulders |
+| , / . | Time warp |
+| M | Map of the Moon |
+| G · I · O · B | On the surface: panels, drill, oxygen, shelter |
+| N | Sound on · off |
+| Esc | Pause |
 
 ## Structure
 
@@ -73,7 +100,7 @@ npm run build    # production build in dist/
 | `docs` | Sources, data and simplifications |
 
 The simulation does not depend on the interface. That lets us test it against known values
-(`src/sim/sim.test.ts`) and reuse it later on a server for a co-op mode.
+(`src/sim/*.test.ts`), and the mission room runs the same simulation in the pilot's browser.
 
 ## Science, sources and simplifications
 
