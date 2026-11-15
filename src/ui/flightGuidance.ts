@@ -1,5 +1,6 @@
 /** La guía observa el vuelo; no modifica la simulación ni avanza por temporizadores. */
 export interface GuideState {
+  circularization?: { dv: number; seconds: number; enoughFuel: boolean; needsStaging: boolean };
   launched: boolean; landed: boolean; ended: string | null;
   alt: number; ap: number; pe: number; toAp: number; vr: number;
   throttle: number; twr: number; free: boolean; fairing: boolean;
@@ -29,11 +30,17 @@ export function flightGuide(h: GuideState) {
   if (h.stages.some((s) => s.active && s.fill <= 0)) return {
     step: 3, title: 'Separate the spent stage', text: 'Press Space to drop it and activate the next one. If it was the last one, your next design will need more delta-v.',
   };
-  if (h.ap >= 160e3 && h.vr > 0 && h.toAp > 35) return {
-    step: 4, title: 'Wait near the apoapsis', text: 'Press X to cut the engine. Wait until Time to apoapsis drops to about 35 s; you still need horizontal speed to get into orbit.',
+  const burn = h.circularization;
+  const lead = burn ? Math.max(35, burn.seconds / 2 + 10) : 35;
+  if (h.alt > 100e3 && burn && !burn.enoughFuel) return {
+    step: 4, title: 'Not enough delta-v for orbit',
+    text: `Circularization needs at least ${Math.ceil(burn.dv)} m/s more. The remaining fuel cannot supply it. On the next flight, build horizontal speed earlier, or use P for ascent autopilot. Prelaunch approval checks the design, not the flown trajectory.`,
   };
-  if (h.alt >= 100e3 || (h.ap >= 160e3 && h.toAp <= 35)) return {
-    step: 4, title: 'Raise the periapsis', text: 'Select Prograde and press Z to thrust near the apoapsis. Use W/S to adjust throttle until the periapsis is above 150 km. P turns on the ascent autopilot.',
+  if (h.ap >= 160e3 && h.vr > 0 && h.toAp > lead) return {
+    step: 4, title: 'Wait near the apoapsis', text: `Press X to cut the engine and select Prograde now to align. Start the burn around ${Math.ceil(lead)} s before apoapsis.${burn ? ` Estimated full-throttle burn: ${Math.ceil(burn.seconds)} s; allow extra for gravity losses.` : ''}`,
+  };
+  if (h.alt >= 100e3 || (h.ap >= 160e3 && h.toAp <= lead)) return {
+    step: 4, title: 'Raise the periapsis', text: `Select Prograde, let the craft align, then press Z. Keep burning until periapsis is above 150 km, then press X.${burn ? ` Estimated full-throttle burn: ${Math.ceil(burn.seconds)} s.` : ''}${burn?.needsStaging ? ' This burn needs another stage; separate when the active tank is empty.' : ''} If altitude is falling before orbit is established, P enables ascent autopilot to help manage the climb.`,
   };
   return {
     step: 2, title: h.alt < 1000 ? 'Gain altitude' : 'Tilt east',

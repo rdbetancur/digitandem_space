@@ -34,7 +34,7 @@ Simplifications of this mission:
 
 - **Lander.** Masses and thrust (2,600 kg dry, 3,400 kg propellant, 24 kN) are game values of the
   right order for a small lander. The sim is a point mass in a single plane (a polar orbit), with
-  a smooth, round Moon; the craters, distant ridges and the Earth on the horizon are decoration.
+  NASA LOLA relief along a polar meridian. The Earth on the horizon is illustrative.
   The Moon's rotation (4.6 m/s at the equator, almost zero at the pole) is ignored. The
   starting orbit (15 km) and the "high gate" where braking ends (about 1.5 km) follow the
   Apollo descent profile described in the Apollo Lunar Surface Journal; the exact values are
@@ -47,8 +47,51 @@ Simplifications of this mission:
   chosen so the lander reaches the high gate just as the horizontal speed runs out. The landing assist works only below 2 km, like a landing radar.
 - **Base.** Power, oxygen, water, temperature and dose are simple balances per hour. Panel power
   (8 kW), battery (30 kWh), loads, drill rate (1 kg of water per hour) and the shelter factor (a
-  tenth) are game values. The 12 h shadow behind a ridge and the solar storm (8 h at 40 mSv/h
-  outside the shelter) are invented scenarios, not real forecasts.
+  tenth) are game values. Shadows now follow a DEM horizon and an idealized solar cycle.
+  The solar storm (8 h at 40 mSv/h outside the shelter) remains a labeled training scenario,
+  not an observed event or a real forecast. The operational base drawing is a schematic.
+
+### Lunar terrain, map and environment update (15 November 2026)
+
+| Resource | Application | Source |
+| --- | --- | --- |
+| LRO LOLA `ldem_16.tif`, 5760 × 2880 float32 kilometers above a 1,737.4 km sphere | Measured terrain, radar clearance, predicted impacts, contact radius and coarse ground slope | [NASA SVS CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/) |
+| LROC `lroc_color_2k.jpg`, December 2025 color product, 2048 × 1024 | Local, offline equirectangular map with coordinates, target and ground track | [NASA SVS CGI Moon Kit](https://svs.gsfc.nasa.gov/4720/) |
+| Thin exosphere; no atmospheric wind or precipitation; large surface temperature contrasts | Vacuum flight and environment display | [NASA Science: Weather on the Moon](https://science.nasa.gov/moon/weather-on-the-moon/), [Moon Facts](https://science.nasa.gov/moon/facts/) |
+
+Credit: NASA's Scientific Visualization Studio; Ernie Wright; Noah Petro; LRO/LOLA and
+LROC instrument teams. The visual map is a processed rendering product, not raw scientific
+photometry; polar imagery includes LOLA albedo fill. It must not be used to infer ice abundance.
+
+Reproducibility: download the floating-point `ldem_16.tif` linked by NASA and run
+`node scripts/import-lunar-data.mjs <path-to-ldem_16.tif>`. The generator validates the TIFF
+layout, preserves its SHA-256 in `src/sim/lunarData.ts`, converts kilometers to meters and
+bilinearly samples pixel centers. No invented crater heights are added. Only the extracted
+profile and horizon are shipped; the 63 MB source DEM is not needed at runtime.
+
+The 2D orbit follows a great circle starting at 49°S, 0°E. The selected expedition target is
+89°S, 0°E, at approximately −347 m relative to the reference sphere. This coordinate is a
+scenario choice, not a certified safe landing site or a confirmed ice deposit. The profile
+uses 16 samples per degree (~1.9 km along the meridian); interpolation cannot resolve
+meter-scale boulders, hazards, landing-leg contacts or local slopes. Gravity uses distance
+to the lunar center; radar height, ground rendering and collision use the same terrain radius.
+
+The target horizon is computed every 5° in azimuth from DEM samples 2–100 km away,
+including spherical curvature. Solar geometry uses a 29.53059-day synodic period and a
+fixed −1.54° declination (idealized southern summer), with an arrival phase chosen to provide
+a long illuminated work interval. It is not tied to today's date; libration, seasonal evolution,
+solar-disk partial visibility and unresolved near-field terrain are omitted. Shadow forecasts
+have 15-minute sampling. Vertical tracking panels use the cosine of solar elevation; shadow
+removes direct generation. Environment calculations represent the target, including when
+the craft lands elsewhere; they are not a global weather service.
+
+Displayed ground temperature is an approximate radiative-equilibrium model:
+`T^4 = 100^4 + (390^4 − 100^4) × max(0, sin(solar elevation))` when illuminated,
+and a 100 K night floor in shadow. These are model parameters within representative lunar
+temperature ranges, not Diviner measurements at this coordinate. Thermal inertia, subsurface
+conduction, terrain self-heating and permanent cold traps (which can be much colder) are
+not solved. Cabin cooling uses a separate simplified radiative heat-loss balance; it is not
+the ground temperature. The 5.6% ice fraction remains a Cabeus-inspired resource scenario.
 
 ## Solar system atlas
 
@@ -140,5 +183,6 @@ subject to copyright in the United States; each image shows its credit in the ga
 A saved copy of one EONET event and its GIBS image (`public/nasa/wildfire-snapshot.jpg`,
 Red Hill fire, Mississippi, 12 November 2026) is used if the services are unreachable.
 
-Apart from those NASA images, no third-party images, models or sounds are used: all other
-graphics are drawn in code.
+The lunar mission also bundles the NASA LROC map and a derived LOLA terrain profile described
+above. Other graphics are drawn in code; the base equipment and small decorative surface
+features are schematic rather than measured objects.

@@ -6,6 +6,8 @@ import { G0 } from './constants';
 import type { Mission } from './missions';
 import type { Report } from './report';
 import { PRESETS, cloneDesign } from './vehicle';
+import { terrainRadius, terrainSlope } from './lunarTerrain';
+import { lunarEnvironment, LUNAR_SHADOWS } from './lunarEnvironment';
 
 // --- Constantes de la Luna (NASA Moon Fact Sheet y JPL) ---
 
@@ -57,7 +59,7 @@ export const O2_0 = 5;
 /** Fracción de hielo en el regolito del cráter, según LCROSS (5,6 %). */
 export const ICE_FRACTION = 0.056;
 /** Sombra de una cresta que tapa el Sol (horas desde el alunizaje). */
-export const SHADOW: [number, number] = [60, 72];
+export const SHADOW: [number, number] = LUNAR_SHADOWS[0] ?? [Infinity, Infinity];
 export const SHADOW_WARN = 6;
 /** Tormenta solar: aviso, inicio y fin (horas). */
 export const FLARE_WARN = 150;
@@ -130,7 +132,7 @@ export function createLuna(): Luna {
     dvUsed: 0, maxSpeedDown: 0, touchdown: null, ended: null,
     hours: 0, battery: 20000, o2: O2_0, water: 0, waterTotal: 0, o2Made: 0, temp: CABIN_T, dose: 0, flareDose: 0,
     panels: false, drill: false, electro: false, shelter: false, minBattery: 20000,
-    events: [{ t: 0, text: 'Polar orbit at 15 km, the altitude where Apollo began its powered descent. The landing site is 40° ahead, on the rim of a crater near the south pole.', kind: 'info' }],
+    events: [{ t: 0, text: 'Polar orbit at 15 km above the mean lunar radius. Target: 89°S, 0°E, 40° ahead. Radar height and contact use NASA LOLA terrain. This is a simulated expedition, not a surveyed landing zone.', kind: 'info' }],
     flags: {},
   };
 }
@@ -146,7 +148,7 @@ export function localFrame(s: Pick<Luna, 'r' | 'v'>) {
   const rm = Math.hypot(s.r.x, s.r.y);
   const up = { x: s.r.x / rm, y: s.r.y / rm };
   const fwd = { x: -up.y, y: up.x };
-  return { rm, up, fwd, alt: rm - R_MOON, vv: s.v.x * up.x + s.v.y * up.y, vh: s.v.x * fwd.x + s.v.y * fwd.y };
+  return { rm, up, fwd, alt: rm - terrainRadius(Math.atan2(s.r.y, s.r.x)), vv: s.v.x * up.x + s.v.y * up.y, vh: s.v.x * fwd.x + s.v.y * fwd.y };
 }
 
 export const mass = (s: Luna) => DRY_MASS + s.prop;
@@ -184,7 +186,7 @@ export function predictPath(s: Luna, maxT = 7000): { points: { x: number; y: num
   let last = 0;
   while (t < maxT) {
     const rm = Math.hypot(r.x, r.y);
-    const alt = rm - R_MOON;
+    const alt = rm - terrainRadius(Math.atan2(r.y, r.x));
     if (alt <= 0) return { points: [...points, { ...r }], impact: Math.atan2(r.y, r.x), impactT: t };
     const dt = Math.max(0.1, Math.min(4, alt / 300));
     const g = MU_MOON / (rm * rm * rm);
@@ -300,9 +302,14 @@ export function stepDescent(s: Luna, dt: number, turn = 0) {
 }
 
 function touchDown(s: Luna, vv: number, vh: number) {
-  const k = R_MOON / Math.hypot(s.r.x, s.r.y);
+  const theta = Math.atan2(s.r.y, s.r.x);
+  const k = terrainRadius(theta) / Math.hypot(s.r.x, s.r.y);
   s.r = { x: s.r.x * k, y: s.r.y * k };
-  const tilt = Math.abs(s.pitch);
+  const slope = terrainSlope(theta);
+  const tilt = Math.abs(wrap(s.pitch + slope));
+  const normalV = vv * Math.cos(slope) - vh * Math.sin(slope);
+  vh = vv * Math.sin(slope) + vh * Math.cos(slope);
+  vv = normalV;
   const dist = Math.abs(siteDistance(s));
   const safe = -vv <= SAFE_VV && Math.abs(vh) <= SAFE_VH && tilt <= SAFE_TILT;
   s.touchdown = { vv: -vv, vh: Math.abs(vh), tilt, dist, t: s.t, prop: s.prop, safe };
@@ -317,20 +324,20 @@ function touchDown(s: Luna, vv: number, vh: number) {
   }
   s.phase = 'superficie';
   log(s, `Touchdown at ${n(-vv, 1)} m/s, ${dist < 1000 ? `${n(dist)} m` : `${n(dist / 1000, 1)} km`} from the site.`, 'ok');
-  if (dist <= SITE_RADIUS) log(s, 'You are on the crater rim, in almost permanent sunlight. The ice is in the shadow below.', 'info');
+  if (dist <= SITE_RADIUS) log(s, 'You reached the target region. Solar availability follows the LOLA horizon model; ice extraction is a mission scenario.', 'info');
   else log(s, 'You landed away from the site. The rover will take longer to reach the ice.', 'warn');
 }
 
 // --- Superficie ---
 
-export const sunlit = (h: number) => !(h >= SHADOW[0] && h < SHADOW[1]);
+export const sunlit = (h: number) => lunarEnvironment(h).lit;
 export const flareActive = (h: number) => h >= FLARE[0] && h < FLARE[1];
 
 /** Perforación: más lenta si la nave quedó lejos del cráter. */
 const drillRate = (s: Luna) => DRILL_RATE * (s.touchdown && s.touchdown.dist <= SITE_RADIUS ? 1 : 0.5);
 
 export function powerBalance(s: Luna) {
-  const gen = s.panels && sunlit(s.hours) ? PANEL_W : 0;
+  const gen = s.panels ? PANEL_W * lunarEnvironment(s.hours).panelFactor : 0;
   const load = BASE_W + (sunlit(s.hours) ? 0 : HEATER_W) + (s.drill ? DRILL_W : 0) + (s.electro ? ELECTRO_W : 0);
   return { gen, load, net: gen - load };
 }
@@ -349,7 +356,7 @@ export function lunaAction(s: Luna, a: LunaAction): string | null {
   } else if (a === 'perforar') {
     if (!s.drill && s.shelter) return 'The crew is in the shelter: the drill cannot run.';
     s.drill = !s.drill;
-    if (s.drill) log(s, `Rover drilling in the permanently shadowed crater: regolith there holds about ${n(ICE_FRACTION * 100, 1)} % water ice.`);
+    if (s.drill) log(s, `Simulated ice deposit: ${n(ICE_FRACTION * 100, 1)} % by mass, based on LCROSS at Cabeus, not a measurement at this target.`);
   } else if (a === 'oxigeno') {
     if (!s.electro && s.water <= 0) return 'There is no water to split yet. Drill for ice first.';
     s.electro = !s.electro;
@@ -368,10 +375,12 @@ export function stepSurface(s: Luna, dtH: number) {
   const h0 = s.hours;
   const h1 = h0 + dtH;
   const crossed = (x: number) => h0 < x && h1 >= x;
-  if (crossed(SHADOW[0] - SHADOW_WARN)) log(s, `In ${SHADOW_WARN} h the Sun will drop behind a ridge for ${SHADOW[1] - SHADOW[0]} h. Without sunlight only the battery is left.`, 'warn');
-  if (crossed(SHADOW[0])) log(s, 'The Sun is hidden. The panels produce nothing and the heaters switch on.', 'warn');
-  if (crossed(SHADOW[1])) log(s, 'Sunlight is back on the panels.', 'ok');
-  if (crossed(FLARE_WARN)) log(s, `Solar flare alert: a burst of energetic protons arrives in ${FLARE[0] - FLARE_WARN} h. With no atmosphere or magnetic field, nothing stops it.`, 'warn');
+  for (const [start, end] of LUNAR_SHADOWS) {
+    if (crossed(start - SHADOW_WARN)) log(s, `Terrain-horizon forecast: shadow in ${SHADOW_WARN} h, lasting about ${n(end - start, 1)} h.`, 'warn');
+    if (crossed(start)) log(s, 'The Sun is hidden. The panels produce nothing and the heaters switch on.', 'warn');
+    if (crossed(end)) log(s, 'Sunlight is back on the panels.', 'ok');
+  }
+  if (crossed(FLARE_WARN)) log(s, `Scenario alert: energetic solar particles arrive in ${FLARE[0] - FLARE_WARN} h. The Moon has no substantial atmosphere or global magnetic shield.`, 'warn');
   if (crossed(FLARE[0])) log(s, 'The proton storm has started.', s.shelter ? 'info' : 'bad');
   if (crossed(FLARE[1])) log(s, 'The solar storm has passed.', 'ok');
 
@@ -392,7 +401,9 @@ export function stepSurface(s: Luna, dtH: number) {
   if (powered) s.temp = Math.min(CABIN_T, s.temp + 4 * dtH);
   else {
     if (!s.flags.sinEnergia) { s.flags.sinEnergia = true; log(s, 'No power: life support and heaters are off. The cabin is cooling down.', 'bad'); }
-    s.temp -= (sunlit(h1) ? 2 : 6) * dtH;
+    const groundK = lunarEnvironment(h1).groundTemperatureC + 273.15;
+    const cabinK = s.temp + 273.15;
+    s.temp -= 6 * Math.max(0, (cabinK ** 4 - groundK ** 4) / (294.15 ** 4 - 100 ** 4)) * dtH;
   }
   if (powered) s.flags.sinEnergia = false;
 

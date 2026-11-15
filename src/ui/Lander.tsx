@@ -9,6 +9,8 @@ import { Report } from '../sim/report';
 import { LanderView, drawDescent, drawSurface } from './landerDraw';
 import { setFlightContext } from './missionControlContext';
 import Term from './Term';
+import { lunarEnvironment, LUNAR_SHADOWS } from '../sim/lunarEnvironment';
+import { lunarCoordinates, terrainElevation } from '../sim/lunarTerrain';
 
 const DESCENT_WARPS = [1, 2, 5, 10, 50, 100];
 /** En la superficie el reloj avanza en horas por segundo real. */
@@ -60,7 +62,7 @@ function hint(h: Hud): string {
   }
   if (!h.panels) return 'Deploy the solar panels (G): the battery alone lasts about a day.';
   if (h.hours >= FLARE_WARN && h.hours < FLARE[1] && !h.shelter) return 'Solar flare! Move the crew into the shelter (B) now.';
-  if (h.hours >= SHADOW[0] - SHADOW_WARN && h.hours < SHADOW[1] && (h.drill || h.electro)) return 'Shadow coming: in the dark only the battery powers the base. Stop the drill and the electrolyzer.';
+  if (LUNAR_SHADOWS.some(([start, end]) => h.hours >= start - SHADOW_WARN && h.hours < end) && (h.drill || h.electro)) return 'Terrain shadow forecast: in the dark only the battery powers the base. Stop the drill and the electrolyzer.';
   if (h.waterTotal < ICE_GOAL && !h.drill && h.lit && !h.shelter) return 'Send the rover to drill for ice in the shadowed crater (I).';
   if (h.water > 0.3 && !h.electro && h.lit) return 'Split the water into oxygen with the electrolyzer (O).';
   return `Keep the base running until day ${SURVIVE_H / 24}. Watch power, oxygen and heat.`;
@@ -230,8 +232,9 @@ export default function Lander({ onEnd, onHome }: Props) {
   const net = hud.gen - hud.load;
 
   return (
-    <div className="flight lander">
+    <div className={`flight lander ${descent && viewRef.current.map ? 'lunar-map' : ''}`}>
       <canvas ref={canvasRef} className="flight-canvas" />
+      {descent && viewRef.current.map && <div className="hud lunar-map-readout">Height: {dist(hud.alt)} · Target: {dist(hud.site)}</div>}
 
       <div className="hud hud-top">
         <button className="btn ghost" onClick={onHome} title="Back to home">← Home</button>
@@ -252,7 +255,7 @@ export default function Lander({ onEnd, onHome }: Props) {
         {descent ? (
           <>
             <h4>Descent</h4>
-            <Row k="Altitude" v={dist(hud.alt)} />
+            <Row k="Height above terrain" v={dist(hud.alt)} />
             <Row k="Vertical speed" v={`${n(hud.vv, 1)} m/s`} tone={hud.alt < 200 ? (-hud.vv <= SAFE_VV ? 'ok' : 'bad') : undefined} />
             <Row k="Horizontal speed" v={`${n(hud.vh, 1)} m/s`} />
             <Row k="Thrust angle" v={`${n(hud.pitch)}° from vertical`} />
@@ -274,6 +277,16 @@ export default function Lander({ onEnd, onHome }: Props) {
             <p className="note">{hint(hud)}</p>
           </>
         )}
+        <details>
+        <summary>Lunar environment · NASA data</summary>
+        <Row k="Latitude" v={`${n(lunarCoordinates(Math.atan2(sRef.current.r.y, sRef.current.r.x)).lat, 2)}°`} />
+        <Row k="Terrain elevation" v={`${n(terrainElevation(Math.atan2(sRef.current.r.y, sRef.current.r.x)))} m`} />
+        <Row k="Target ground · model" v={`${n(lunarEnvironment(hud.hours).groundTemperatureC)} °C`} />
+        <Row k="Target Sun elevation" v={`${n(lunarEnvironment(hud.hours).solarElevation, 2)}°`} />
+        <Row k="Atmosphere" v="Exosphere · no wind or rain" />
+        <p className="note">LOLA relief: ~1.9 km samples. LROC map: NASA/SVS. Target lighting uses a terrain horizon and a southern-summer model, not live weather. Base equipment, ice yield and solar storm are mission scenarios.</p>
+        <a href="https://svs.gsfc.nasa.gov/4720/" target="_blank" rel="noreferrer">NASA map and elevation sources</a>
+        </details>
       </div>
 
       <div className={`hud panel hud-right ${rightOpen ? '' : 'plegado'}`}>

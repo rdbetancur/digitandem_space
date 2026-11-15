@@ -5,11 +5,8 @@ import {
 } from '../sim/flight';
 import { drawLooseStage, drawVehicle, vehicleHeight } from './vehicleDraw';
 
-export interface Camera {
-  /** Metros por píxel. */
-  zoom: number;
-  targetZoom: number;
-}
+import { Camera, centerBlend } from './flightCamera';
+export type { Camera } from './flightCamera';
 
 export interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; size: number }
 
@@ -29,13 +26,6 @@ const smooth = (x: number, a: number, b: number) => {
   return t * t * (3 - 2 * t);
 };
 
-function angleLerp(a: number, b: number, t: number): number {
-  let d = b - a;
-  while (d > Math.PI) d -= 2 * Math.PI;
-  while (d < -Math.PI) d += 2 * Math.PI;
-  return a + d * t;
-}
-
 export function fitZoom(f: Flight, w: number, h: number): number {
   const o = orbitOf(f.r, f.v);
   const rm = Math.hypot(f.r.x, f.r.y);
@@ -53,8 +43,8 @@ export function render(
   const alt = rm - RE;
   const phi = Math.atan2(f.r.y, f.r.x);
   const tRot = smooth(lz, 2.2, 3.6); // 0 = vista local, 1 = mapa
-  const tCen = smooth(lz, 3.6, 4.4);
-  const beta = angleLerp(Math.PI / 2 - phi, 0, tRot);
+  const tCen = centerBlend(zoom, rm, w, h);
+  const beta = cam.rotation ?? Math.PI / 2 - phi;
   const cb = Math.cos(beta), sb = Math.sin(beta);
   const camX = f.r.x * (1 - tCen), camY = f.r.y * (1 - tCen);
   const cx = w / 2, cy = h * (0.5 + 0.06 * (1 - tRot));

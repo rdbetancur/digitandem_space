@@ -326,3 +326,8 @@ select, input[type='text'], input:not([type]) {
 .atlas-side .kv b.bad { color: var(--bad); }
 .atlas-side .btn.primary.wide { margin: 8px 0 2px; }
 .atlas-photo img { aspect-ratio: auto; height: 170px; object-fit: contain; background: #000; }
+.lunar-map-readout { display: none; }
+@media (max-width: 900px) {
+  .lunar-map .hud-left, .lunar-map .hud-right { display: none; }
+  .lunar-map .lunar-map-readout { display: block; top: 122px; left: 12px; right: 12px; text-align: center; font-size: 13px; }
+}

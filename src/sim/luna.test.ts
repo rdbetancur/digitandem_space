@@ -85,7 +85,8 @@ describe('lunar descent', () => {
     // Antes el asistente dejaba caer la nave a 80 m/s y seguía con 200 m/s de horizontal a 2 km.
     const s = createLuna();
     const tr = pilot(s);
-    expect(tr.maxSink).toBeLessThan(60);
+    // Real LOLA relief changes the height profile compared with the old smooth sphere.
+    expect(tr.maxSink).toBeLessThan(65);
     expect(Math.abs(tr.vhAtAssist!)).toBeLessThan(80);
     // Si la horizontal se acaba antes, que sea cerca del portón alto, no a 6 km.
     if (tr.altAtStop !== null) expect(tr.altAtStop).toBeLessThan(HIGH_GATE + 1500);
@@ -135,7 +136,9 @@ describe('lunar survival', () => {
   });
 
   it('drilling through the shadow drains the battery', () => {
-    const s = survive(land(), (x) => {
+    const initial = land();
+    initial.hours = SHADOW[0]; initial.battery = 30000; initial.o2 = 100;
+    const s = survive(initial, (x) => {
       if (!x.panels) lunaAction(x, 'paneles');
       if (!x.drill) lunaAction(x, 'perforar');
     });
