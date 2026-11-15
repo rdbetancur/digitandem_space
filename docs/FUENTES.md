@@ -12,6 +12,39 @@ The Space Apps terms require citing every resource used. This list is updated wi
 | Standard gravity | 9.80665 m/s² | Conventional value |
 | Air density at sea level | 1.225 kg/m³ | [NASA Glenn, Earth Atmosphere Model](https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/earth-atmosphere-equation-metric/) |
 
+## "Ice in the shadows" mission (Moon)
+
+| Data | Value used | Source |
+| --- | --- | --- |
+| Moon's gravitational parameter | 4.902800118 × 10¹² m³/s² (DE440) | [JPL Solar System Dynamics, Astrodynamic Parameters](https://ssd.jpl.nasa.gov/astro_par.html); the [NASA Moon Fact Sheet](https://nssdc.gsfc.nasa.gov/planetary/factsheet/moonfact.html) rounds it to 4.90 × 10¹² |
+| Moon's mean radius | 1,737.4 km | NASA Moon Fact Sheet |
+| Surface gravity | 1.62 m/s² | NASA Moon Fact Sheet |
+| Lunar day (synodic month), so night at the equator lasts about 14.75 Earth days | 29.53 days | NASA Moon Fact Sheet |
+| At the poles the Sun stays near the horizon, so some crater floors never see it ("permanently shadowed regions") | — | [NASA Science, Water and Ices on the Moon](https://science.nasa.gov/moon/moon-water-and-ices/) |
+| Water ice in a permanently shadowed crater (Cabeus), about 5.6 % of the regolith by mass | 5.6 % | [NASA Science, LCROSS](https://science.nasa.gov/mission/lcross/); Colaprete et al. (2010), *Detection of Water in the LCROSS Ejecta Plume*, Science 330, 463–468 |
+| Artemis targets the lunar south pole for its ice and its sunlit rims | — | [NASA, Artemis](https://www.nasa.gov/humans-in-space/artemis/) |
+| Radiation on the lunar surface, Chang'e 4 lander | 1.369 mSv per day | Zhang et al. (2020), *First measurements of the radiation dose on the lunar surface*, Science Advances 6, eaaz1334 |
+| Crew dose limit for 30 days (blood-forming organs) | 250 mSv | NASA-STD-3001, NASA Space Flight Human-System Standard, Volume 1 |
+| Oxygen used per crew member | 0.84 kg per day | NASA, Life Support Baseline Values and Assumptions Document (NASA/TP-2015-218570) |
+| Oxygen in water by mass | 16 / 18.015 = 0.888 | Atomic masses (IUPAC) |
+| Energy to split water: at least 15.9 MJ (4.4 kWh) per kg; the game uses about 6 kWh/kg for a real electrolyzer | 285.8 kJ/mol | Standard enthalpy of formation of liquid water, [NIST Chemistry WebBook](https://webbook.nist.gov/cgi/cbook.cgi?ID=C7732185) |
+| Specific impulse of a storable (hypergolic) descent engine | 311 s | Order of magnitude of the Apollo Lunar Module descent engine, [NASA History, Apollo Lunar Surface Journal](https://www.nasa.gov/history/alsj/) |
+
+Simplifications of this mission:
+
+- **Lander.** Masses and thrust (2,600 kg dry, 3,400 kg propellant, 24 kN) are game values of the
+  right order for a small lander. The sim is a point mass in a single plane (a polar orbit), with
+  a smooth, round Moon; the crater drawn next to the site is decoration. The Moon's rotation
+  (4.6 m/s at the equator, almost zero at the pole) is ignored.
+- **Braking distance.** Computed with the rocket equation for horizontal braking at full thrust,
+  plus a small margin for the thrust that goes into holding up the fall.
+- **Assists.** "Braking" splits the thrust between holding a descent rate that grows with altitude
+  and cancelling horizontal speed. The landing assist works only below 2 km, like a landing radar.
+- **Base.** Power, oxygen, water, temperature and dose are simple balances per hour. Panel power
+  (8 kW), battery (30 kWh), loads, drill rate (1 kg of water per hour) and the shelter factor (a
+  tenth) are game values. The 12 h shadow behind a ridge and the solar storm (8 h at 40 mSv/h
+  outside the shelter) are invented scenarios, not real forecasts.
+
 ## Solar system atlas
 
 | Data | Source |

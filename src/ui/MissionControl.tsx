@@ -4,11 +4,12 @@ import { Report } from '../sim/report';
 import { Design } from '../sim/vehicle';
 import { describeDesign, describeMission, describeReport, flightContext } from './missionControlContext';
 
-type Screen = 'home' | 'lab' | 'flight' | 'report' | 'atlas';
+type Screen = 'home' | 'lab' | 'flight' | 'report' | 'atlas' | 'luna';
 interface Msg { role: 'user' | 'assistant'; text: string; error?: boolean }
 
 const SCREEN_NAME: Record<Screen, string> = {
   home: 'Home', lab: 'Lab (designing the craft)', flight: 'Flight', report: 'Mission report', atlas: 'Solar system atlas',
+  luna: 'Lunar landing and surface base',
 };
 
 const IDEAS: Record<Screen, string[]> = {
@@ -17,6 +18,7 @@ const IDEAS: Record<Screen, string[]> = {
   flight: ['What do I do now?', 'How do I get to orbit?', 'What do apoapsis and periapsis mean?'],
   report: ['Why did my flight end like this?', 'What should I change for the next attempt?', 'Explain gravity losses to me'],
   atlas: ['What is a launch window?', 'Why is it so hard to get to Mercury?', 'Why does the signal take minutes to arrive?'],
+  luna: ['When should I start braking?', 'Why is there water ice at the lunar south pole?', 'How do I make oxygen from ice?'],
 };
 
 interface Props {
@@ -40,8 +42,8 @@ export default function MissionControl({ screen, mission, design, report }: Prop
   const context = () => {
     const parts = [`Current screen: ${SCREEN_NAME[screen]}.`];
     if (screen !== 'home' && screen !== 'atlas') parts.push(describeMission(mission));
-    if (screen !== 'home') parts.push(describeDesign(design));
-    if (screen === 'flight') { const f = flightContext(); if (f) parts.push(`Live telemetry:\n${f}`); }
+    if (screen !== 'home' && mission.id !== 'luna') parts.push(describeDesign(design));
+    if (screen === 'flight' || screen === 'luna') { const f = flightContext(); if (f) parts.push(`Live telemetry:\n${f}`); }
     if (screen === 'report' && report) parts.push(describeReport(report));
     return parts.join('\n\n');
   };

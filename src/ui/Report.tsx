@@ -8,7 +8,7 @@ const TAG: Record<ReportData['resultado'], string> = { exito: 'Success', parcial
 interface Props {
   report: ReportData;
   onRetry: () => void;
-  onLab: () => void;
+  onLab?: () => void;
   onHome: () => void;
 }
 
@@ -86,7 +86,7 @@ export default function Report({ report, onRetry, onLab, onHome }: Props) {
 
         <footer className="report-actions">
           <button className="btn primary" onClick={onRetry}>Fly again</button>
-          <button className="btn" onClick={onLab}>Modify the craft</button>
+          {onLab && <button className="btn" onClick={onLab}>Modify the craft</button>}
           <button className="btn ghost" onClick={onHome}>Home</button>
         </footer>
       </div>

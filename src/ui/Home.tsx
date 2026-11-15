@@ -12,7 +12,7 @@ interface Props {
 
 const SOON = [
   { nombre: 'Career', texto: 'Run an agency: budget, contracts and research.' },
-  { nombre: 'Ice in the shadows', texto: 'Land on the Moon and measure resources at the lunar south pole.' },
+  { nombre: 'Mars and beyond', texto: 'Land on Mars with a heat shield, parachutes and aerobraking; grow a crewed base and make propellant from ice.' },
   { nombre: 'Crew of 2 to 4', texto: 'Pilot, navigator, engineer and scientist on the same craft.' },
 ];
 
@@ -47,6 +47,13 @@ export default function Home({ logbook, onStart, onAtlas, onClearLog }: Props) {
             <p>{MISSIONS.ojo.resumen}</p>
             <span className="muted small">Inspired by: {MISSIONS.ojo.inspiracion}</span>
             <span className="go">Accept mission →</span>
+          </button>
+          <button className="mode" onClick={() => onStart('luna')}>
+            <span className="mode-tag">Challenge · {MISSIONS.luna.nivel}</span>
+            <h2>{MISSIONS.luna.nombre}</h2>
+            <p>{MISSIONS.luna.resumen}</p>
+            <span className="muted small">Inspired by: {MISSIONS.luna.inspiracion}</span>
+            <span className="go">Go to the Moon →</span>
           </button>
           <button className="mode" onClick={onAtlas}>
             <span className="mode-tag">Atlas</span>
