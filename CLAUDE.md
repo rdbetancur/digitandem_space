@@ -1,7 +1,7 @@
 # ASCENSO — instructions for Claude
 
 Space mission design game for NASA Space Apps 2026 (Space Mission Design Game challenge).
-React + TypeScript + Vite. UI text and docs are in Spanish; keep them in Spanish.
+React + TypeScript + Vite. UI text and docs are in English (a NASA Space Apps requirement); keep them in English.
 
 - `src/sim` — pure TypeScript simulation, no React imports. Tested in `src/sim/sim.test.ts`.
 - `src/ui` — React screens and Canvas 2D drawing.

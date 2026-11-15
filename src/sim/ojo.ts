@@ -21,7 +21,7 @@ export const PASSES_NEEDED = 3;
 
 const ARMED = 'ojo:armada';
 
-const n = (x: number, d = 0) => x.toLocaleString('es-CO', { maximumFractionDigits: d, minimumFractionDigits: d });
+const n = (x: number, d = 0) => x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
 
 function wrap(a: number): number {
   while (a > Math.PI) a -= 2 * Math.PI;
@@ -69,9 +69,9 @@ export function timeToTarget(f: Flight): number | null {
 
 function judge(f: Flight, m: Measurement): { ok: boolean; texto: string } {
   const res = gsd(m.alt);
-  if (!targetInView(f.r, f.t)) return { ok: false, texto: 'el incendio no estaba en el campo de visión' };
-  if (!isSunlit(targetPos(f.t))) return { ok: false, texto: 'en la zona del incendio era de noche' };
-  if (res > GSD_MAX) return { ok: false, texto: `desde ${n(m.alt / 1000)} km cada píxel cubre ${n(res)} m y se necesitan ${GSD_MAX} m o menos` };
+  if (!targetInView(f.r, f.t)) return { ok: false, texto: 'the fire was not in the field of view' };
+  if (!isSunlit(targetPos(f.t))) return { ok: false, texto: 'it was night over the fire' };
+  if (res > GSD_MAX) return { ok: false, texto: `from ${n(m.alt / 1000)} km each pixel covers ${n(res)} m and ${GSD_MAX} m or less is needed` };
   return { ok: true, texto: '' };
 }
 
@@ -86,11 +86,11 @@ function review(f: Flight) {
       f.flags[`ojo:util:${m.id}`] = true;
       // Más detalle, más valor científico: una órbita baja rinde hasta 2,5 veces más.
       m.points *= Math.min(2.5, GSD_MAX / res);
-      m.reading = `Imagen del incendio desde ${n(m.alt / 1000)} km: ${n(res)} m por píxel.`;
-      f.events.push({ t: f.t, text: `Imagen útil del incendio: ${n(res)} m por píxel.`, kind: 'ok' });
+      m.reading = `Image of the fire from ${n(m.alt / 1000)} km: ${n(res)} m per pixel.`;
+      f.events.push({ t: f.t, text: `Usable image of the fire: ${n(res)} m per pixel.`, kind: 'ok' });
     } else {
-      m.reading = `Imagen de la Tierra desde ${n(m.alt / 1000)} km. No sirve para la misión: ${j.texto}.`;
-      f.events.push({ t: f.t, text: `La imagen no sirve para la misión: ${j.texto}.`, kind: 'warn' });
+      m.reading = `Image of Earth from ${n(m.alt / 1000)} km. Not usable for the mission: ${j.texto}.`;
+      f.events.push({ t: f.t, text: `The image is not usable for the mission: ${j.texto}.`, kind: 'warn' });
     }
   }
 }
@@ -114,7 +114,7 @@ function onStep(f: Flight) {
   if (f.flags[ARMED] && !f.landed && targetInView(f.r, f.t) && isSunlit(targetPos(f.t))) {
     f.flags[ARMED] = false;
     const err = measure(f, 'camara');
-    if (err) f.events.push({ t: f.t, text: `La captura programada falló: ${err}`, kind: 'warn' });
+    if (err) f.events.push({ t: f.t, text: `The scheduled capture failed: ${err}`, kind: 'warn' });
   }
   review(f);
 }
@@ -133,15 +133,15 @@ function panel(f: Flight) {
   const next = timeToTarget(f);
   const p = passes(f);
   return [
-    { k: 'Incendio', v: view ? 'en el campo de visión' : next !== null ? `sobrevuelo en ${clock(next)}` : 'fuera de vista', tone: view ? 'ok' as const : undefined },
-    { k: 'Luz en la zona', v: day ? 'de día' : 'de noche', tone: day ? undefined : 'bad' as const },
-    { k: 'Detalle desde aquí', v: `${n(res)} m por píxel`, tone: f.landed ? undefined : res <= GSD_MAX ? 'ok' as const : 'bad' as const },
-    { k: 'Pasadas útiles', v: `${p.total} de ${PASSES_NEEDED} · ${p.entregadas} en Tierra` },
+    { k: 'Fire', v: view ? 'in the field of view' : next !== null ? `overpass in ${clock(next)}` : 'out of view', tone: view ? 'ok' as const : undefined },
+    { k: 'Light over the area', v: day ? 'daytime' : 'night', tone: day ? undefined : 'bad' as const },
+    { k: 'Detail from here', v: `${n(res)} m per pixel`, tone: f.landed ? undefined : res <= GSD_MAX ? 'ok' as const : 'bad' as const },
+    { k: 'Usable passes', v: `${p.total} of ${PASSES_NEEDED} · ${p.entregadas} on Earth` },
   ];
 }
 
 const preset = cloneDesign(PRESETS.pequeno);
-preset.nombre = 'Observador terrestre';
+preset.nombre = 'Earth observer';
 preset.instruments = ['camara'];
 
 const inOrbit = (f: Flight) => {
@@ -152,60 +152,60 @@ const inOrbit = (f: Flight) => {
 
 export const OJO: Mission = {
   id: 'ojo',
-  nombre: 'Ojo en la Tierra',
-  nivel: 'Inicial',
-  resumen: 'Sigue un incendio forestal desde la órbita: elige la altura, fotografíalo en tres pasadas y baja las imágenes a Tierra.',
-  inspiracion: 'Satélites Landsat y Terra, y el rastreador de eventos naturales EONET de la NASA.',
+  nombre: 'Eye on Earth',
+  nivel: 'Beginner',
+  resumen: 'Track a wildfire from orbit: choose your altitude, photograph it on three passes and downlink the images to Earth.',
+  inspiracion: 'The Landsat and Terra satellites, and NASA\'s EONET natural event tracker.',
   fuente: 'https://eonet.gsfc.nasa.gov/',
   presupuesto: 10,
   preset,
   requisitos: [
-    'La nave debe llevar una cámara. Su detalle es de 6 m por píxel por cada 100 km de altura.',
-    `Una imagen sirve con ${GSD_MAX} m por píxel o menos: la órbita debe quedar por debajo de 500 km.`,
-    'Más bajo da más detalle y más ciencia, pero las pasadas sobre las estaciones duran menos y cuesta más bajar los datos.',
-    'Son tres imágenes de 40 MB: revisa el almacenamiento y la antena que eliges.',
-    'El incendio solo se ve de día. Al despegar quedan unas 10 horas de luz en la zona.',
+    'The craft must carry a camera. Its detail is 6 m per pixel for every 100 km of altitude.',
+    `An image is usable at ${GSD_MAX} m per pixel or less: the orbit must stay below 500 km.`,
+    'Lower gives more detail and more science, but passes over the stations are shorter and downlinking the data is harder.',
+    'That is three 40 MB images: check your storage and the antenna you choose.',
+    'The fire is only visible in daylight. At liftoff there are about 10 hours of daylight left over the area.',
   ],
   referencia: {
-    texto: 'Los satélites Landsat observan la Tierra desde 1972. Landsat 8 y 9 toman imágenes de 30 m por píxel desde 705 km de altura. La órbita de un satélite de observación se elige según el detalle y la cobertura que necesita la ciencia.',
+    texto: 'The Landsat satellites have observed Earth since 1972. Landsat 8 and 9 take images at 30 m per pixel from 705 km up. An observation satellite\'s orbit is chosen for the detail and coverage the science needs.',
     fuente: 'NASA · Landsat Science',
     url: 'https://landsat.gsfc.nasa.gov/',
   },
-  target: { nombre: 'Incendio forestal', pos: targetPos },
+  target: { nombre: 'Wildfire', pos: targetPos },
   onStep,
   panel,
   accion: {
-    texto: (f) => (f.flags[ARMED] ? 'Captura programada · cancelar' : 'Programar captura en el próximo sobrevuelo'),
+    texto: (f) => (f.flags[ARMED] ? 'Capture scheduled · cancel' : 'Schedule a capture on the next overpass'),
     run: (f) => {
-      if (!f.design.instruments.includes('camara')) return 'La nave no lleva cámara.';
+      if (!f.design.instruments.includes('camara')) return 'The craft has no camera.';
       f.flags[ARMED] = !f.flags[ARMED];
-      return f.flags[ARMED] ? 'La cámara disparará sola cuando el incendio esté a la vista y sea de día.' : null;
+      return f.flags[ARMED] ? 'The camera will fire on its own when the fire is in view and it is daytime.' : null;
     },
   },
   objetivos: [
     {
-      id: 'orbita', texto: 'Órbita estable: periapsis sobre 150 km',
-      ayuda: 'Necesitas unos 7,8 km/s de velocidad horizontal para no volver a caer.',
+      id: 'orbita', texto: 'Stable orbit: periapsis above 150 km',
+      ayuda: 'You need about 7.8 km/s of horizontal speed to stop falling back.',
       check: inOrbit,
     },
     {
-      id: 'operativo', texto: 'Satélite liberado y desplegado',
-      ayuda: 'Separa la última etapa con la barra espaciadora y despliega paneles y antena con G.',
+      id: 'operativo', texto: 'Satellite released and deployed',
+      ayuda: 'Separate the last stage with the space bar and deploy panels and antenna with G.',
       check: (f) => payloadOnly(f) && f.deployed,
     },
     {
-      id: 'imagen', texto: `Toma una imagen útil del incendio (${GSD_MAX} m por píxel o menos, de día)`,
-      ayuda: 'Programa la captura o usa la cámara justo cuando el incendio esté en el campo de visión.',
+      id: 'imagen', texto: `Take a usable image of the fire (${GSD_MAX} m per pixel or less, in daylight)`,
+      ayuda: 'Schedule the capture, or use the camera just as the fire enters the field of view.',
       check: (f) => passes(f).total >= 1,
     },
     {
-      id: 'seguimiento', texto: `Síguelo en ${PASSES_NEEDED} pasadas distintas`,
-      ayuda: 'Un fenómeno cambia: hace falta volver a verlo. Cada vuelta a la Tierra da una pasada nueva.',
+      id: 'seguimiento', texto: `Track it on ${PASSES_NEEDED} separate passes`,
+      ayuda: 'Events change, so you have to look again. Each trip around Earth gives a new pass.',
       check: (f) => passes(f).total >= PASSES_NEEDED,
     },
     {
-      id: 'entrega', texto: `Entrega en Tierra una imagen de cada pasada`,
-      ayuda: 'Las imágenes pesan 40 MB. Con una antena lenta harán falta varias pasadas sobre las estaciones.',
+      id: 'entrega', texto: `Deliver one image from each pass to Earth`,
+      ayuda: 'Each image is 40 MB. With a slow antenna it will take several passes over the stations.',
       check: (f) => passes(f).entregadas >= PASSES_NEEDED,
     },
   ],

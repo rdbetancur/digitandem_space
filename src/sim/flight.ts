@@ -283,7 +283,7 @@ export function stageAction(f: Flight) {
   // En la plataforma la barra nunca separa una etapa que todavía tiene propelente:
   // enciende, o lleva a plena potencia si el jugador ya había subido el acelerador.
   if (f.landed && f.stats.liftoffT === null && f.stageIdx === 0 && st.prop > 0) {
-    if (f.throttle === 0) log(f, 'Encendido de motores.');
+    if (f.throttle === 0) log(f, 'Engine ignition.');
     f.throttle = 1;
     return;
   }
@@ -296,16 +296,16 @@ export function stageAction(f: Flight) {
       angle: f.heading, spin: (Math.random() - 0.5) * 0.3, stage: st.design, age: 0,
     });
     if (st.prop > 1 && rm - RE < ATM_TOP && f.throttle > 0) {
-      log(f, `Separaste la etapa ${f.stageIdx + 1} con ${Math.round(st.prop)} kg de propelente sin usar.`, 'warn');
+      log(f, `You separated stage ${f.stageIdx + 1} with ${Math.round(st.prop)} kg of unused propellant.`, 'warn');
     }
   }
   f.stageIdx += 1;
   if (payloadOnly(f)) {
     f.throttle = 0;
     f.flags.payloadFree = true;
-    log(f, 'Carga útil liberada.', 'ok');
+    log(f, 'Payload released.', 'ok');
   } else {
-    log(f, `Separación de etapa. Etapa ${f.stageIdx + 1} activa.`);
+    log(f, `Stage separation. Stage ${f.stageIdx + 1} active.`);
   }
 }
 
@@ -316,14 +316,14 @@ export function canDeploy(f: Flight): boolean {
 export function deploy(f: Flight) {
   if (!canDeploy(f)) return;
   f.deployed = true;
-  log(f, 'Paneles y antena desplegados.', 'ok');
+  log(f, 'Panels and antenna deployed.', 'ok');
 }
 
 /** Recoge paneles y antena, por ejemplo antes de volver a entrar a la atmósfera. */
 export function retract(f: Flight) {
   if (!f.deployed || f.ended) return;
   f.deployed = false;
-  log(f, 'Paneles y antena recogidos.', 'info');
+  log(f, 'Panels and antenna stowed.', 'info');
 }
 
 export function storageUsed(f: Flight): number {
@@ -332,13 +332,13 @@ export function storageUsed(f: Flight): number {
 
 /** Toma una medición. Devuelve un mensaje de error si no se puede. */
 export function measure(f: Flight, inst: InstrumentId): string | null {
-  if (f.ended && f.ended !== 'aterrizaje') return 'La nave ya no responde.';
-  if (!f.design.instruments.includes(inst)) return 'Ese instrumento no está a bordo.';
+  if (f.ended && f.ended !== 'aterrizaje') return 'The craft no longer responds.';
+  if (!f.design.instruments.includes(inst)) return 'That instrument is not on board.';
   const spec = INSTRUMENTS[inst];
-  if (f.fairingOn && inst !== 'termo') return 'La cofia cubre el instrumento. Se suelta a 110 km.';
-  if (f.battery < spec.energy) return 'Batería insuficiente.';
+  if (f.fairingOn && inst !== 'termo') return 'The fairing covers the instrument. It is released at 110 km.';
+  if (f.battery < spec.energy) return 'Not enough battery.';
   const core = CORES[f.design.core];
-  if (storageUsed(f) + spec.mb > core.storage) return 'Almacenamiento lleno. Transmite datos para liberar espacio.';
+  if (storageUsed(f) + spec.mb > core.storage) return 'Storage full. Transmit data to free up space.';
   const alt = altitude(f);
   const ctx = contextOf(alt, f.landed);
   const repeats = f.measurements.filter((m) => m.instrument === inst && m.context === ctx).length;
@@ -351,7 +351,7 @@ export function measure(f: Flight, inst: InstrumentId): string | null {
     mb: spec.mb, sent: f.ended === 'aterrizaje' ? spec.mb : 0, points,
   };
   f.measurements.push(m);
-  log(f, `${spec.nombre} en ${CONTEXTS[ctx].toLowerCase()}: ${m.reading}`, 'ok');
+  log(f, `${spec.nombre}, ${CONTEXTS[ctx].toLowerCase()}: ${m.reading}`, 'ok');
   return null;
 }
 
@@ -361,19 +361,19 @@ function recoverData(f: Flight) {
   for (const m of f.measurements) {
     if (m.sent < m.mb) { mb += m.mb - m.sent; m.sent = m.mb; }
   }
-  if (mb > 0) log(f, `Nave recuperada: ${mb.toFixed(1)} MB de datos entregados en mano.`, 'ok');
+  if (mb > 0) log(f, `Craft recovered: ${mb.toFixed(1)} MB of data delivered by hand.`, 'ok');
 }
 
 /** Razón por la que no se puede transmitir ahora, o null si el enlace está listo. */
 export function transmitBlocker(f: Flight): string | null {
   const ant = ANTENNAS[f.design.antenna];
-  if (ant.rate <= 0) return 'La nave no lleva antena.';
-  if (f.fairingOn) return 'La cofia cubre la antena.';
-  if (!f.landed && f.panelsLost) return 'La antena se perdió: el aire la arrancó.';
-  if (!f.landed && !f.deployed) return 'Despliega la antena primero.';
-  if (f.battery <= 0) return 'Sin batería.';
-  if (!f.now.link) return 'Sin línea de vista a una estación terrestre.';
-  if (!f.measurements.some((m) => m.sent < m.mb)) return 'No hay datos pendientes.';
+  if (ant.rate <= 0) return 'The craft has no antenna.';
+  if (f.fairingOn) return 'The fairing covers the antenna.';
+  if (!f.landed && f.panelsLost) return 'The antenna is gone: the air tore it off.';
+  if (!f.landed && !f.deployed) return 'Deploy the antenna first.';
+  if (f.battery <= 0) return 'Battery empty.';
+  if (!f.now.link) return 'No line of sight to a ground station.';
+  if (!f.measurements.some((m) => m.sent < m.mb)) return 'No data waiting to be sent.';
   return null;
 }
 
@@ -404,14 +404,14 @@ function runAutopilot(f: Flight) {
     if (f.stageIdx < f.stages.length - 1) { stageAction(f); return; }
     f.autopilot = false;
     f.throttle = 0;
-    log(f, 'Piloto automático: propelente agotado antes de alcanzar la órbita.', 'warn');
+    log(f, 'Autopilot: propellant ran out before reaching orbit.', 'warn');
     return;
   }
   if (o.pe - RE >= f.apTarget - 30e3 && h > ATM_TOP) {
     f.throttle = 0;
     f.autopilot = false;
     f.sas = 'prograda';
-    log(f, 'Piloto automático: órbita alcanzada. Tienes el control.', 'ok');
+    log(f, 'Autopilot: orbit reached. You have control.', 'ok');
     return;
   }
   if (f.landed && f.throttle === 0) { stageAction(f); return; }
@@ -444,7 +444,7 @@ function runAutopilot(f: Flight) {
       f.throttle = 0;
       f.autopilot = false;
       f.sas = 'prograda';
-      log(f, 'Piloto automático: velocidad orbital alcanzada. Tienes el control.', 'ok');
+      log(f, 'Autopilot: orbital speed reached. You have control.', 'ok');
       return;
     }
   }
@@ -518,7 +518,7 @@ export function stepFlight(f: Flight, dt: number, rot = 0) {
     st.prop = Math.max(0, st.prop - mdot * dt * frac);
     if (f.landed) f.stats.propBurnedOnPad += mdot * dt * frac;
     if (st.prop <= 0) {
-      log(f, `Etapa ${f.stageIdx + 1} sin propelente.`, 'warn');
+      log(f, `Stage ${f.stageIdx + 1} out of propellant.`, 'warn');
       if (f.stageIdx === f.stages.length - 1 && f.stats.burnoutSpeed === null) {
         f.stats.burnoutSpeed = Math.hypot(f.v.x, f.v.y);
         f.stats.burnoutAlt = h;
@@ -537,7 +537,7 @@ export function stepFlight(f: Flight, dt: number, rot = 0) {
     if (thrust > mass * g && f.stats.liftoffT === null) {
       f.landed = false;
       f.stats.liftoffT = f.t;
-      log(f, 'Despegue.', 'ok');
+      log(f, 'Liftoff.', 'ok');
     }
   } else {
     const ux = f.r.x / rm, uy = f.r.y / rm;
@@ -620,11 +620,11 @@ export function stepFlight(f: Flight, dt: number, rot = 0) {
     const gLimit = free ? 20 : mat.gLimit;
     const fluxLimit = hasShield(d) ? 2e7 : f.fairingOn ? 1.5e6 : 6e5;
     if (load > qLimit) {
-      fail('estructura', load, 'La estructura se rompió por carga aerodinámica.');
+      fail('estructura', load, 'The structure broke under aerodynamic load.');
     } else if (gForce > gLimit) {
-      fail('aceleracion', gForce, 'La estructura no soportó la aceleración.');
+      fail('aceleracion', gForce, 'The structure could not withstand the acceleration.');
     } else if (flux > fluxLimit) {
-      fail('calor', flux, 'La nave se destruyó por calentamiento aerodinámico.');
+      fail('calor', flux, 'The craft was destroyed by aerodynamic heating.');
     } else if (h <= 0) {
       const gv = groundVelocity(f.r);
       const impact = Math.hypot(f.v.x - gv.x, f.v.y - gv.y);
@@ -637,10 +637,10 @@ export function stepFlight(f: Flight, dt: number, rot = 0) {
         f.throttle = 0;
         f.ended = 'aterrizaje';
         s.failSpeed = impact;
-        log(f, `Aterrizaje a ${impact.toFixed(1)} m/s.`, 'ok');
+        log(f, `Landed at ${impact.toFixed(1)} m/s.`, 'ok');
         recoverData(f);
       } else {
-        fail('impacto', impact, `Impacto contra la superficie a ${Math.round(impact)} m/s.`);
+        fail('impacto', impact, `Hit the surface at ${Math.round(impact)} m/s.`);
       }
     }
     if (f.ended) { f.now = { q, load, g: gForce, flux, thrust, mass, sunlit: isSunlit(f.r), link: false }; f.t += dt; return; }
@@ -648,28 +648,28 @@ export function stepFlight(f: Flight, dt: number, rot = 0) {
     // --- Eventos automáticos ---
     if (f.fairingOn && h > 110e3) {
       f.fairingOn = false;
-      log(f, 'Cofia liberada a 110 km: ya no hay aire que proteger.', 'info');
+      log(f, 'Fairing released at 110 km: there is no more air to protect against.', 'info');
     }
     if (f.deployed && q > 300) {
       f.deployed = false;
       f.panelsLost = true;
-      log(f, 'El aire arrancó los paneles y la antena desplegados.', 'bad');
+      log(f, 'The air tore off the deployed panels and antenna.', 'bad');
     }
     const vrad = f.v.x * (f.r.x / rm) + f.v.y * (f.r.y / rm);
     if (hasChute(d) && !f.chuteOpen && free && h < 7000 && vrad < 0 && speedRel < 200) {
       f.chuteOpen = true;
-      log(f, 'Paracaídas desplegado.', 'ok');
+      log(f, 'Parachute deployed.', 'ok');
     }
     if (!f.flags.karman && h > KARMAN) {
       f.flags.karman = true;
-      log(f, 'Cruzaste la línea de Kármán (100 km): estás en el espacio.', 'ok');
+      log(f, 'You crossed the Kármán line (100 km): you are in space.', 'ok');
     }
     if (h > ATM_TOP) {
       const o = orbitOf(f.r, f.v);
       if (!f.flags.orbit && o.e < 1 && o.pe - RE > ATM_TOP) {
         f.flags.orbit = true;
         s.orbitT = f.t;
-        log(f, `Órbita estable: ${Math.round((o.pe - RE) / 1000)} × ${Math.round((o.ap - RE) / 1000)} km.`, 'ok');
+        log(f, `Stable orbit: ${Math.round((o.pe - RE) / 1000)} × ${Math.round((o.ap - RE) / 1000)} km.`, 'ok');
       }
     }
   }
@@ -698,7 +698,7 @@ export function stepFlight(f: Flight, dt: number, rot = 0) {
         const sent = Math.min(left, budget);
         m.sent += sent;
         budget -= sent;
-        if (m.sent >= m.mb) log(f, `Datos recibidos en Tierra: ${INSTRUMENTS[m.instrument].nombre}.`, 'ok');
+        if (m.sent >= m.mb) log(f, `Data received on Earth: ${INSTRUMENTS[m.instrument].nombre}.`, 'ok');
       }
     } else if (!f.measurements.some((m) => m.sent < m.mb)) {
       f.transmitting = false;
@@ -708,7 +708,7 @@ export function stepFlight(f: Flight, dt: number, rot = 0) {
   f.battery = Math.max(0, Math.min(cap, f.battery + ((gen - use) * dt) / 3600));
   if (f.battery <= 0 && !f.flags.dead) {
     f.flags.dead = true;
-    log(f, 'Batería agotada: instrumentos y antena sin energía.', 'bad');
+    log(f, 'Battery depleted: instruments and antenna have no power.', 'bad');
   } else if (f.battery > 1) f.flags.dead = false;
 
   // --- Etapas descartadas ---

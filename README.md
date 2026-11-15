@@ -1,97 +1,98 @@
 # ASCENSO
 
-Juego de diseño de misiones espaciales para el reto **Space Mission Design Game** del
-NASA Space Apps Challenge 2026. Diseñas una nave, la pones a prueba, la pilotas hasta la
-órbita y haces ciencia. Cada decisión de ingeniería tiene una consecuencia física visible.
+A space mission design game for the **Space Mission Design Game** challenge of the
+NASA Space Apps Challenge 2026. You design a craft, put it to the test, fly it to
+orbit and do science. Every engineering decision has a visible physical consequence.
 
-> Nombre provisional.
+> Working title.
 
-## Qué incluye esta versión (0.1)
+## What this version includes (0.1)
 
-- **Laboratorio**: carga útil, instrumentos, energía, antena, hasta tres etapas, tres materiales
-  y revisión en vivo de masa, delta-v, empuje/peso, costo, energía y datos.
-- **Bancos de ensayo**: mesa de vibración (revela el límite estructural) y túnel de viento
-  (predice la carga máxima del ascenso con la misma física del vuelo).
-- **Vuelo continuo** sobre una Tierra a escala real: despegue, giro gravitacional, etapas,
-  órbita, reentrada y paracaídas. Zoom continuo de la plataforma al mapa orbital.
-- **Asistencia en tres niveles**: manual, asistida (mantener, prograda, retrógrada) y piloto
-  automático de ascenso.
-- **Ciencia sin contrato**: cuatro instrumentos, cinco contextos, rendimientos decrecientes,
-  y datos que solo cuentan del todo cuando llegan a una estación terrestre.
-- **Control de Misión**: asistente con IA que ve tu nave y tu vuelo, y explica qué hacer, por qué
-  pasó algo o cómo funciona cualquier mecánica.
-- **Atlas del sistema solar**: posición de cada planeta en cualquier fecha, retraso de una señal,
-  energía solar disponible, impulso y ventana de lanzamiento para llegar, comparados con tu nave.
-- **Desafío "Ojo en la Tierra"**: seguir un incendio desde la órbita. La altura decide el detalle
-  de las imágenes y el tiempo de enlace para bajarlas.
-- **Desafío "Primer CubeSat"** con seis objetivos, y **modo libre** sin presupuesto ni reloj.
-- **Informe causal**: explica qué pasó con números de la telemetría y enlaza la ciencia detrás.
+- **Lab**: payload, instruments, power, antenna, up to three stages, three materials,
+  and a live review of mass, delta-v, thrust/weight, cost, power and data.
+- **Test benches**: vibration table (reveals the structural limit) and wind tunnel
+  (predicts the peak ascent load using the same physics as the flight).
+- **Continuous flight** over a real-scale Earth: liftoff, gravity turn, staging,
+  orbit, reentry and parachute. Seamless zoom from the launch pad to the orbital map.
+- **Three levels of assistance**: manual, assisted (hold, prograde, retrograde) and an
+  ascent autopilot.
+- **Contract-free science**: four instruments, five contexts, diminishing returns,
+  and data that only counts in full once it reaches a ground station.
+- **Mission Control**: an AI assistant that sees your craft and your flight, and explains what
+  to do, why something happened or how any mechanic works.
+- **Solar system atlas**: where each planet is on any date, signal delay, available solar
+  power, and the delta-v and launch window to get there, compared with your craft.
+- **"Eye on Earth" challenge**: track a wildfire from orbit. Altitude decides how detailed
+  the images are and how much link time you get to downlink them.
+- **"First CubeSat" challenge** with six objectives, and a **free play mode** with no budget or clock.
+- **Causal report**: explains what happened using telemetry numbers and links to the science behind it.
 
-## Cómo correrlo
+## How to run it
 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # pruebas de la simulación
-npm run build    # versión de producción en dist/
+npm test         # simulation tests
+npm run build    # production build in dist/
 ```
 
-## Controles de vuelo
+## Flight controls
 
-| Tecla | Acción |
+| Key | Action |
 | --- | --- |
-| Espacio | Encender motores · separar etapa |
-| W / S | Subir · bajar potencia |
-| Z / X | Potencia máxima · cortar motor |
-| A / D | Inclinar al oeste · al este |
-| T | Asistencia: mantener, prograda, retrógrada |
-| P | Piloto automático de ascenso |
-| , / . | Aceleración temporal |
-| M · rueda | Mapa orbital · zoom |
-| G | Desplegar · recoger paneles y antena |
-| Esc | Pausa |
-| C · 1–4 | Panel de ciencia · usar instrumento |
+| Space | Ignite engines · separate stage |
+| W / S | Throttle up · down |
+| Z / X | Full throttle · cut engine |
+| A / D | Tilt west · east |
+| T | Assistance: hold, prograde, retrograde |
+| P | Ascent autopilot |
+| , / . | Time warp |
+| M · wheel | Orbital map · zoom |
+| G | Deploy · stow panels and antenna |
+| Esc | Pause |
+| C · 1–4 | Science panel · use instrument |
 
-## Estructura
+## Structure
 
-| Carpeta | Contenido |
+| Folder | Contents |
 | --- | --- |
-| `src/sim` | Simulación pura en TypeScript, sin React: física, vehículo, ciencia, misiones e informe |
-| `src/ui` | Pantallas en React y dibujo en Canvas 2D |
-| `docs` | Fuentes, datos y simplificaciones |
+| `src/sim` | Pure TypeScript simulation, no React: physics, vehicle, science, missions and report |
+| `src/ui` | React screens and Canvas 2D drawing |
+| `docs` | Sources, data and simplifications |
 
-La simulación no depende de la interfaz. Eso permite probarla con valores conocidos
-(`src/sim/sim.test.ts`) y reutilizarla más adelante en un servidor para el modo cooperativo.
+The simulation does not depend on the interface. That lets us test it against known values
+(`src/sim/sim.test.ts`) and reuse it later on a server for a co-op mode.
 
-## Ciencia, fuentes y simplificaciones
+## Science, sources and simplifications
 
-Ver [`docs/FUENTES.md`](docs/FUENTES.md). Toda fuente usada está citada ahí, como exigen los
-términos de Space Apps.
+See [`docs/FUENTES.md`](docs/FUENTES.md). Every source used is cited there, as the
+Space Apps terms require.
 
-## Uso de inteligencia artificial
+## Use of artificial intelligence
 
-Este proyecto se desarrolló con asistencia de IA para escribir código y documentación, bajo la
-dirección y revisión del equipo: Claude (Anthropic, mediante Claude Code) y Codex (OpenAI). Los
-commits escritos con Claude lo indican en sus metadatos con la línea `Co-Authored-By`. La idea
-del juego y las decisiones de diseño son del equipo.
+This project was built with AI assistance for writing code and documentation, under the
+team's direction and review: Claude (Anthropic, through Claude Code) and Codex (OpenAI).
+Commits written with Claude say so in their metadata with a `Co-Authored-By` line. The game
+idea and the design decisions are the team's.
 
-El juego incluye **Control de Misión**, un asistente opcional que responde preguntas del jugador
-con IA generativa (Gemini 3.8 Flash, de Google). Recibe la pregunta y un resumen del diseño y de
-la telemetría del vuelo; no recibe datos personales. Sus respuestas van marcadas como generadas
-por IA. El resto del juego (física, misiones, informe y Atlas) no usa IA y funciona sin él.
+The game includes **Mission Control**, an optional assistant that answers the player's questions
+with generative AI (Gemini 3.8 Flash, by Google). It receives the question and a summary of the
+design and the flight telemetry; it receives no personal data. Its answers are labeled as
+AI-generated. The rest of the game (physics, missions, report and Atlas) does not use AI and
+works without it. Mission Control answers in the language the player writes in, English by default.
 
-### Activar Control de Misión
+### Turning on Mission Control
 
-La clave de la API vive solo en el servidor; nunca se sube al repositorio ni llega al navegador.
+The API key lives only on the server; it is never committed to the repository and never reaches the browser.
 
-- **En tu equipo:** crea el archivo `.env.local` en la raíz (git lo ignora) con una línea
-  `GEMINI_API_KEY=tu_clave` y reinicia `npm run dev`. Cada persona puede crear su propia clave
-  gratuita en [Google AI Studio](https://aistudio.google.com/apikey).
-- **En Vercel:** agrega la variable `GEMINI_API_KEY` en Settings → Environment Variables y
-  vuelve a desplegar.
+- **On your machine:** create a `.env.local` file at the root (git ignores it) with the line
+  `GEMINI_API_KEY=your_key` and restart `npm run dev`. Everyone can create their own free key
+  in [Google AI Studio](https://aistudio.google.com/apikey).
+- **On Vercel:** add the `GEMINI_API_KEY` variable under Settings → Environment Variables and
+  redeploy.
 
-Sin clave, el juego funciona igual y el asistente avisa que no está configurado.
+Without a key, the game works the same and the assistant says it is not set up.
 
-## Licencia
+## License
 
 [Apache 2.0](LICENSE).

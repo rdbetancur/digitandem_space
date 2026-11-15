@@ -15,9 +15,9 @@ import { describeFlight, setFlightContext } from './missionControlContext';
 import Term from './Term';
 
 const WARPS = [1, 2, 5, 10, 50, 100, 1000];
-const SAS_LABEL: Record<Sas, string> = { mantener: 'Mantener', prograda: 'Prograda', retrograda: 'Retrógrada' };
+const SAS_LABEL: Record<Sas, string> = { mantener: 'Hold', prograda: 'Prograde', retrograda: 'Retrograde' };
 
-const n = (x: number, d = 0) => x.toLocaleString('es-CO', { maximumFractionDigits: d, minimumFractionDigits: d });
+const n = (x: number, d = 0) => x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
 const dist = (m: number) => (Math.abs(m) < 10e3 ? `${n(m)} m` : `${n(m / 1000, Math.abs(m) < 1000e3 ? 1 : 0)} km`);
 const clock = (s: number) => {
   if (!isFinite(s)) return '—';
@@ -108,7 +108,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
     const f = flightRef.current;
     if (f.deployed) retract(f);
     else if (canDeploy(f)) deploy(f);
-    else say(f.panelsLost ? 'Los paneles y la antena se perdieron.' : 'Solo se puede desplegar en vuelo, sin cofia, sin empuje y fuera del aire denso.');
+    else say(f.panelsLost ? 'The panels and antenna were lost.' : 'You can only deploy in flight, with no fairing, no thrust and out of dense air.');
   };
 
   const say = (msg: string | null) => {
@@ -120,7 +120,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
   const stepWarp = (dir: number) => {
     const i = WARPS.indexOf(warpRef.current);
     const next = WARPS[Math.max(0, Math.min(WARPS.length - 1, (i < 0 ? 0 : i) + dir))];
-    if (next > maxWarp(flightRef.current)) say('Aceleración temporal limitada: motores encendidos o dentro de la atmósfera.');
+    if (next > maxWarp(flightRef.current)) say('Time warp limited: engines running or inside the atmosphere.');
     setWarp(next);
   };
   const toggleMap = () => {
@@ -141,9 +141,9 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
     if (f.transmitting) { f.transmitting = false; return; }
     const b = transmitBlocker(f);
     // Sin línea de vista la transmisión queda armada y empieza sola al pasar sobre una estación.
-    if (b && !b.startsWith('Sin línea')) { say(b); return; }
+    if (b && !b.startsWith('No line of sight')) { say(b); return; }
     f.transmitting = true;
-    if (b) say('Transmisión armada: empezará al tener línea de vista con una estación.');
+    if (b) say('Transmission armed: it will start once a station is in line of sight.');
   };
 
   useEffect(() => {
@@ -300,38 +300,38 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       <canvas ref={canvasRef} className="flight-canvas" />
 
       <div className="hud hud-top">
-        <button className="btn ghost" onClick={onBack} title="Volver al laboratorio">← Laboratorio</button>
+        <button className="btn ghost" onClick={onBack} title="Back to the lab">← Lab</button>
         <div className="clock"><span className="lbl">T+</span>{clock(hud.t)}</div>
         <div className="warp">
-          <button className="btn tiny" onClick={() => stepWarp(-1)} title="Tecla ,">◀</button>
+          <button className="btn tiny" onClick={() => stepWarp(-1)} title="Key ,">◀</button>
           <span className={`warp-x ${hud.warp > 1 ? 'on' : ''}`}>{hud.warp}×</span>
-          <button className="btn tiny" onClick={() => stepWarp(1)} title="Tecla .">▶</button>
+          <button className="btn tiny" onClick={() => stepWarp(1)} title="Key .">▶</button>
         </div>
         <div className="chip">{hud.context}</div>
-        <button className="btn tiny" onClick={toggleMap} title="Tecla M">{mapMode.current ? 'Vista nave' : 'Mapa'}</button>
-        <button className={`btn tiny ${paused ? 'on' : ''}`} onClick={togglePause} title="Tecla Esc">{paused ? 'Continuar' : 'Pausa'}</button>
-        <button className="btn tiny" onClick={() => setHelp((v) => !v)} title="Tecla H">Controles</button>
-        <button className={`btn tiny ${guideOpen ? 'on' : ''}`} onClick={() => { setGuideOpen((v) => !v); setHelp(false); }} aria-pressed={guideOpen}>Guía</button>
-        <button className="btn warn" onClick={finish}>Terminar vuelo</button>
+        <button className="btn tiny" onClick={toggleMap} title="Key M">{mapMode.current ? 'Craft view' : 'Map'}</button>
+        <button className={`btn tiny ${paused ? 'on' : ''}`} onClick={togglePause} title="Key Esc">{paused ? 'Resume' : 'Pause'}</button>
+        <button className="btn tiny" onClick={() => setHelp((v) => !v)} title="Key H">Controls</button>
+        <button className={`btn tiny ${guideOpen ? 'on' : ''}`} onClick={() => { setGuideOpen((v) => !v); setHelp(false); }} aria-pressed={guideOpen}>Guide</button>
+        <button className="btn warn" onClick={finish}>End flight</button>
       </div>
 
       <div className="hud panel hud-left">
-        <h4>Navegación</h4>
-        <Row k="Altitud" v={dist(hud.alt)} />
-        <Row k={hud.alt < 45e3 ? 'Velocidad (suelo)' : 'Velocidad orbital'} v={`${n(hud.alt < 45e3 ? hud.speedSurf : hud.speed)} m/s`} />
-        <Row k="Vel. vertical" v={`${n(hud.vr)} m/s`} />
-        <Row k="Inclinación" v={`${n(hud.pitch)}°`} />
+        <h4>Navigation</h4>
+        <Row k="Altitude" v={dist(hud.alt)} />
+        <Row k={hud.alt < 45e3 ? 'Speed (ground)' : 'Orbital speed'} v={`${n(hud.alt < 45e3 ? hud.speedSurf : hud.speed)} m/s`} />
+        <Row k="Vertical speed" v={`${n(hud.vr)} m/s`} />
+        <Row k="Pitch" v={`${n(hud.pitch)}°`} />
         <Row k="Apoapsis" v={hud.launched ? dist(hud.ap) : '—'} tone={hud.ap > ATM_TOP ? 'ok' : undefined} />
-        <Row k="Periapsis" v={hud.launched ? (hud.pe > -RE * 0.5 ? dist(hud.pe) : 'bajo tierra') : '—'} tone={hud.pe > ATM_TOP ? 'ok' : undefined} />
-        <Row k="T. al apoapsis" v={clock(hud.toAp)} />
-        <h4>Cargas</h4>
-        <Gauge label="Carga aerodinámica" value={`${n(hud.load / 1000, 1)} kPa`} pct={loadPct} limit={tested.vibracion ? `límite ${n(mat.qLimit / 1000)}` : 'límite sin ensayar'} hideLimit={!tested.vibracion} />
-        <Gauge label="Aceleración" value={`${n(hud.g, 1)} g`} pct={gPct} limit={tested.vibracion ? `límite ${n(mat.gLimit)}` : 'límite sin ensayar'} hideLimit={!tested.vibracion} />
+        <Row k="Periapsis" v={hud.launched ? (hud.pe > -RE * 0.5 ? dist(hud.pe) : 'underground') : '—'} tone={hud.pe > ATM_TOP ? 'ok' : undefined} />
+        <Row k="Time to apoapsis" v={clock(hud.toAp)} />
+        <h4>Loads</h4>
+        <Gauge label="Aerodynamic load" value={`${n(hud.load / 1000, 1)} kPa`} pct={loadPct} limit={tested.vibracion ? `limit ${n(mat.qLimit / 1000)}` : 'limit untested'} hideLimit={!tested.vibracion} />
+        <Gauge label="Acceleration" value={`${n(hud.g, 1)} g`} pct={gPct} limit={tested.vibracion ? `limit ${n(mat.gLimit)}` : 'limit untested'} hideLimit={!tested.vibracion} />
       </div>
 
       <div className={`hud panel hud-right ${rightOpen ? '' : 'plegado'}`}>
         <button className="btn tiny wide hud-right-toggle" onClick={() => setRightOpen((v) => !v)} aria-expanded={rightOpen}>
-          {rightOpen ? 'Ocultar panel ▴' : 'Misión y propulsión ▾'}
+          {rightOpen ? 'Hide panel ▴' : 'Mission and propulsion ▾'}
         </button>
         {mission.objetivos.length > 0 && (
           <>
@@ -349,11 +349,11 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
             )}
           </>
         )}
-        <h4>Propulsión</h4>
-        <Gauge label="Potencia" value={`${n(hud.throttle * 100)} %`} pct={hud.throttle * 100} plain />
-        <Row k="Empuje/peso" v={n(hud.twr, 2)} tone={hud.throttle > 0 && hud.twr < 1 && hud.landed ? 'bad' : undefined} />
-        <Row k="Delta-v restante" v={`${n(hud.dv)} m/s`} />
-        <Row k="Masa" v={`${n(hud.mass)} kg`} />
+        <h4>Propulsion</h4>
+        <Gauge label="Throttle" value={`${n(hud.throttle * 100)} %`} pct={hud.throttle * 100} plain />
+        <Row k="Thrust/weight" v={n(hud.twr, 2)} tone={hud.throttle > 0 && hud.twr < 1 && hud.landed ? 'bad' : undefined} />
+        <Row k="Delta-v left" v={`${n(hud.dv)} m/s`} />
+        <Row k="Mass" v={`${n(hud.mass)} kg`} />
         <div className="stages">
           {hud.stages.map((s, i) => (
             <div key={i} className={`stage ${s.active ? 'active' : ''} ${s.gone ? 'gone' : ''}`}>
@@ -363,48 +363,48 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
             </div>
           )).reverse()}
         </div>
-        <h4>Asistencia</h4>
+        <h4>Assistance</h4>
         <div className="seg">
           {(['mantener', 'prograda', 'retrograda'] as Sas[]).map((m) => (
             <button key={m} className={`btn tiny ${hud.sas === m && !hud.autopilot ? 'on' : ''}`} onClick={() => { f.sas = m; f.autopilot = false; }}>{SAS_LABEL[m]}</button>
           ))}
         </div>
-        <button className={`btn tiny wide ${hud.autopilot ? 'on' : ''}`} onClick={() => { f.autopilot = !f.autopilot; setHelp(false); }} title="Tecla P">
-          {hud.autopilot ? 'Piloto automático activo' : 'Piloto automático de ascenso'}
+        <button className={`btn tiny wide ${hud.autopilot ? 'on' : ''}`} onClick={() => { f.autopilot = !f.autopilot; setHelp(false); }} title="Key P">
+          {hud.autopilot ? 'Autopilot active' : 'Ascent autopilot'}
         </button>
       </div>
 
       <div className="hud panel hud-bottom-left">
-        <h4>Sistemas</h4>
-        <Gauge label={`Batería ${hud.sunlit ? '· al sol' : '· en sombra'}`} value={`${n(hud.battery)} Wh`} pct={(hud.battery / Math.max(1, hud.batteryMax)) * 100} plain invert />
-        <Gauge label="Datos a bordo" value={`${n(hud.storage, 1)} / ${n(hud.storageMax)} MB`} pct={(hud.storage / hud.storageMax) * 100} plain />
-        <Row k="Enlace" v={hud.link ? `con estación · ${n((hud.delay ?? 0) * 1000, 1)} ms` : 'sin línea de vista'} tone={hud.link ? 'ok' : 'bad'} />
-        <Row k="Ciencia" v={`${n(hud.sciE, 1)} entregada / ${n(hud.sciO, 1)}`} />
+        <h4>Systems</h4>
+        <Gauge label={`Battery ${hud.sunlit ? '· in sunlight' : '· in shadow'}`} value={`${n(hud.battery)} Wh`} pct={(hud.battery / Math.max(1, hud.batteryMax)) * 100} plain invert />
+        <Gauge label="Data on board" value={`${n(hud.storage, 1)} / ${n(hud.storageMax)} MB`} pct={(hud.storage / hud.storageMax) * 100} plain />
+        <Row k="Link" v={hud.link ? `station · ${n((hud.delay ?? 0) * 1000, 1)} ms` : 'no line of sight'} tone={hud.link ? 'ok' : 'bad'} />
+        <Row k="Science" v={`${n(hud.sciE, 1)} delivered / ${n(hud.sciO, 1)}`} />
         <div className="seg">
-          <button className={`btn tiny ${hud.deployed ? 'on' : ''}`} disabled={!hud.deployed && !hud.canDeploy} onClick={toggleDeploy} title="Tecla G">{hud.deployed ? 'Recoger' : 'Desplegar'}</button>
+          <button className={`btn tiny ${hud.deployed ? 'on' : ''}`} disabled={!hud.deployed && !hud.canDeploy} onClick={toggleDeploy} title="Key G">{hud.deployed ? 'Stow' : 'Deploy'}</button>
           <button className={`btn tiny ${hud.transmitting ? 'on' : ''}`} onClick={toggleTx} disabled={ANTENNAS[design.antenna].rate === 0}>
-            {hud.transmitting ? (hud.txBlock ? 'Esperando enlace…' : 'Transmitiendo') : 'Transmitir'}
+            {hud.transmitting ? (hud.txBlock ? 'Waiting for link…' : 'Transmitting') : 'Transmit'}
           </button>
-          <button className={`btn tiny ${sciOpen ? 'on' : ''}`} onClick={() => setSciOpen((v) => !v)} title="Tecla C">Ciencia</button>
+          <button className={`btn tiny ${sciOpen ? 'on' : ''}`} onClick={() => setSciOpen((v) => !v)} title="Key C">Science</button>
         </div>
       </div>
 
       {sciOpen && (
         <div className="hud panel science">
-          <h4>Instrumentos · {hud.context}</h4>
-          {design.instruments.length === 0 && <p className="muted">Esta nave no lleva instrumentos.</p>}
+          <h4>Instruments · {hud.context}</h4>
+          {design.instruments.length === 0 && <p className="muted">This craft carries no instruments.</p>}
           {design.instruments.map((i, idx) => (
             <button key={i} className="inst" onClick={() => doMeasure(i)}>
               <span className="keycap">{idx + 1}</span>
               <span className="inst-name">{INSTRUMENTS[i].nombre}</span>
-              <span className="inst-val">+{n(hud.instValues[i] ?? 0, 1)} ciencia</span>
+              <span className="inst-val">+{n(hud.instValues[i] ?? 0, 1)} science</span>
             </button>
           ))}
           <div className="readings">
             {f.measurements.slice(-4).reverse().map((m) => (
               <div key={m.id} className="reading">
                 <b>{INSTRUMENTS[m.instrument].nombre}</b> · {CONTEXTS[m.context]}
-                <span className={m.sent >= m.mb ? 'ok' : 'muted'}> · {m.sent >= m.mb ? 'recibido en Tierra' : `a bordo ${n((m.sent / m.mb) * 100)} %`}</span>
+                <span className={m.sent >= m.mb ? 'ok' : 'muted'}> · {m.sent >= m.mb ? 'received on Earth' : `on board ${n((m.sent / m.mb) * 100)} %`}</span>
                 <div>{m.reading}</div>
               </div>
             ))}
@@ -421,41 +421,41 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       {toast && <div className="hud toast">{toast}</div>}
 
       {paused && !hud.ended && (
-        <div className="hud prompt">En pausa · pulsa <span className="keycap">Esc</span> para continuar</div>
+        <div className="hud prompt">Paused · press <span className="keycap">Esc</span> to resume</div>
       )}
 
       {guideOpen && !help && <FlightGuide hud={hud} paused={paused} autopilot={hud.autopilot} onClose={() => setGuideOpen(false)} />}
 
       {!paused && !hud.launched && !hud.ended && !help && !guideOpen && (
-        <div className="hud prompt">Pulsa <span className="keycap">Espacio</span> para encender motores</div>
+        <div className="hud prompt">Press <span className="keycap">Space</span> to ignite the engines</div>
       )}
 
       {help && (
         <div className="hud help" onClick={() => setHelp(false)}>
-          <h3>Controles de vuelo</h3>
+          <h3>Flight controls</h3>
           <div className="help-grid">
-            <span className="keycap">Espacio</span><span>Encender · separar etapa</span>
-            <span className="keycap">W / S</span><span>Subir · bajar potencia</span>
-            <span className="keycap">Z / X</span><span>Potencia máxima · cortar motor</span>
-            <span className="keycap">A / D</span><span>Inclinar al oeste · al este</span>
-            <span className="keycap">T</span><span>Asistencia: mantener, prograda, retrógrada</span>
-            <span className="keycap">P</span><span>Piloto automático de ascenso</span>
-            <span className="keycap">, / .</span><span>Aceleración temporal</span>
-            <span className="keycap">M</span><span>Mapa orbital · la rueda del ratón hace zoom</span>
-            <span className="keycap">G</span><span>Desplegar · recoger paneles y antena</span>
-            <span className="keycap">Esc</span><span>Pausa</span>
-            <span className="keycap">C · 1–4</span><span>Panel de ciencia · usar instrumento</span>
+            <span className="keycap">Space</span><span>Ignite · separate stage</span>
+            <span className="keycap">W / S</span><span>Throttle up · down</span>
+            <span className="keycap">Z / X</span><span>Full throttle · cut engine</span>
+            <span className="keycap">A / D</span><span>Tilt west · east</span>
+            <span className="keycap">T</span><span>Assistance: hold, prograde, retrograde</span>
+            <span className="keycap">P</span><span>Ascent autopilot</span>
+            <span className="keycap">, / .</span><span>Time warp</span>
+            <span className="keycap">M</span><span>Orbital map · the mouse wheel zooms</span>
+            <span className="keycap">G</span><span>Deploy · stow panels and antenna</span>
+            <span className="keycap">Esc</span><span>Pause</span>
+            <span className="keycap">C · 1–4</span><span>Science panel · use instrument</span>
           </div>
-          <p className="muted">Para llegar a órbita: sube vertical unos segundos, inclina poco a poco hacia el este y gana velocidad horizontal. Cuando el apoapsis pase de 150 km, corta el motor, espera a llegar arriba y vuelve a acelerar en prograda.</p>
-          <button className="btn primary">Entendido</button>
+          <p className="muted">To reach orbit: climb vertically for a few seconds, tilt east little by little and build horizontal speed. When the apoapsis passes 150 km, cut the engine, wait until you reach the top and thrust prograde again.</p>
+          <button className="btn primary">Got it</button>
         </div>
       )}
 
       {(hud.ended || allDone) && (
         <div className={`hud endcard ${failed ? 'bad' : 'ok'}`}>
-          <h3>{failed ? 'Vuelo perdido' : allDone ? 'Objetivos cumplidos' : 'Vuelo terminado'}</h3>
-          <p>{failed ? f.events[f.events.length - 1]?.text : allDone ? 'Puedes seguir explorando o cerrar la misión.' : 'La nave está en tierra.'}</p>
-          <button className="btn primary" onClick={() => onEnd(f)}>Ver informe de misión</button>
+          <h3>{failed ? 'Flight lost' : allDone ? 'Objectives complete' : 'Flight ended'}</h3>
+          <p>{failed ? f.events[f.events.length - 1]?.text : allDone ? 'You can keep exploring or close the mission.' : 'The craft is on the ground.'}</p>
+          <button className="btn primary" onClick={() => onEnd(f)}>View mission report</button>
         </div>
       )}
     </div>

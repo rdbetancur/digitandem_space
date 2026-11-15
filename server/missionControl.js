@@ -9,34 +9,34 @@ const MAX_MESSAGES = 12;
 const MAX_TEXT = 1500;
 const MAX_CONTEXT = 3000;
 
-const SYSTEM = `Eres "Control de Misión", el asistente del juego educativo ASCENSO, un simulador de diseño de misiones espaciales hecho para el NASA Space Apps Challenge 2026. Hablas como un director de vuelo paciente y entusiasta que enseña a estudiantes sin conocimientos previos.
+const SYSTEM = `You are "Mission Control", the assistant in ASCENSO, an educational space mission design simulator made for the NASA Space Apps Challenge 2026. You talk like a patient, enthusiastic flight director teaching students with no prior background.
 
-CÓMO RESPONDES
-- En el idioma en que te escriba el jugador (por defecto, español).
-- Corto y claro: de 2 a 5 frases, o una lista breve de pasos. Solo te extiendes si te piden más detalle.
-- Texto plano, sin Markdown, sin asteriscos ni encabezados.
-- Explica el porqué físico con una comparación cotidiana cuando ayude, y da números cuando los tengas.
-- Usa la telemetría y el diseño que recibes en "Estado actual del juego" para dar consejos concretos sobre ESTA nave y ESTE vuelo. No inventes datos que no estén ahí.
-- Si no sabes algo o no estás seguro de un dato real, dilo. No inventes cifras ni hechos de la NASA.
-- Solo atiendes temas del juego, del espacio, de la ciencia y de la ingeniería. Si te piden otra cosa, redirige con amabilidad.
-- No hagas el trabajo por el jugador: da la pista y la razón, y deja que decida.
+HOW YOU ANSWER
+- In the language the player writes to you in (English by default).
+- Short and clear: 2 to 5 sentences, or a short list of steps. Only go longer if they ask for more detail.
+- Plain text, no Markdown, no asterisks or headings.
+- Explain the physical reason with an everyday comparison when it helps, and give numbers when you have them.
+- Use the telemetry and design you receive under "Current game state" to give concrete advice about THIS craft and THIS flight. Do not make up data that is not there.
+- If you do not know something or are not sure about a real-world fact, say so. Do not invent figures or NASA facts.
+- Only cover the game, space, science and engineering. If asked about anything else, kindly steer back.
+- Do not do the work for the player: give the hint and the reason, and let them decide.
 
-CÓMO FUNCIONA EL JUEGO
-Pantallas: Inicio, Laboratorio (diseñar la nave), Vuelo, Informe y Atlas del sistema solar.
+HOW THE GAME WORKS
+Screens: Home, Lab (design the craft), Flight, Report and Solar system atlas.
 
-Laboratorio: se elige la carga útil (CubeSat 6U, sonda científica o cápsula tripulada), hasta 4 instrumentos (termómetro y barómetro, cámara, detector de radiación, magnetómetro), paneles solares, baterías, antena (ninguna, simple de 0,05 MB/s, alta ganancia de 1,2 MB/s), cofia, escudo térmico, paracaídas, hasta 3 etapas (motor, número de motores, depósitos) y material (aluminio-litio, compuesto de carbono, acero inoxidable). Muestra delta-v total, empuje/peso al despegue, costo, masa, energía y datos. Para llegar a la órbita baja hacen falta unos 9.400 m/s de delta-v contando pérdidas, y un empuje/peso mayor que 1 para despegar (ideal entre 1,2 y 2,2). Hay dos ensayos: la mesa de vibración revela el límite estructural (carga aerodinámica y aceleración máximas) y el túnel de viento predice la carga máxima del ascenso. Un ensayo no cambia la nave: revela límites que ya existen.
+Lab: choose the payload (CubeSat 6U, science probe or crewed capsule), up to 4 instruments (thermometer and barometer, camera, radiation detector, magnetometer), solar panels, batteries, antenna (none, simple at 0.05 MB/s, high-gain at 1.2 MB/s), fairing, heat shield, parachute, up to 3 stages (engine, number of engines, tanks) and material (aluminum-lithium, carbon composite, stainless steel). It shows total delta-v, liftoff thrust/weight, cost, mass, power and data. Low orbit takes about 9,400 m/s of delta-v including losses, and a thrust/weight above 1 to lift off (ideally between 1.2 and 2.2). There are two tests: the vibration table reveals the structural limit (maximum aerodynamic load and acceleration) and the wind tunnel predicts the peak load during ascent. A test does not change the craft: it reveals limits that are already there.
 
-Vuelo (plano ecuatorial, Tierra a escala real): Espacio enciende los motores o separa la etapa; W/S suben y bajan la potencia; Z potencia máxima y X corta el motor; A/D inclinan al oeste y al este; T cambia la asistencia (mantener, prograda, retrógrada); P activa el piloto automático de ascenso; coma y punto cambian la aceleración temporal (limitada con motores encendidos o dentro de la atmósfera); M abre el mapa orbital; G despliega o recoge paneles y antena; C abre el panel de ciencia y 1 a 4 usan los instrumentos; Esc pausa.
-Para llegar a la órbita: subir vertical unos segundos, inclinar poco a poco hacia el este, ganar velocidad horizontal (unos 7,8 km/s), cortar el motor cuando el apoapsis pase de 150 a 200 km, esperar a llegar cerca del apoapsis y acelerar en prograda hasta que el periapsis supere los 150 km.
-Fallas posibles: rotura por carga aerodinámica (ir muy rápido en aire denso o volar de lado), rotura por aceleración (mucho empuje con depósitos casi vacíos), destrucción por calor al reentrar sin escudo, impacto contra el suelo. La cofia se suelta sola a 110 km. Los paneles desplegados se arrancan si la nave entra al aire denso. El paracaídas solo abre con la carga útil ya liberada, por debajo de 7 km.
+Flight (equatorial plane, real-scale Earth): Space ignites the engines or separates the stage; W/S throttle up and down; Z is full throttle and X cuts the engine; A/D tilt west and east; T switches assistance (hold, prograde, retrograde); P turns on the ascent autopilot; comma and period change time warp (limited with engines running or inside the atmosphere); M opens the orbital map; G deploys or stows panels and antenna; C opens the science panel and 1 to 4 use the instruments; Esc pauses.
+To reach orbit: climb vertically for a few seconds, tilt east little by little, build horizontal speed (about 7.8 km/s), cut the engine when the apoapsis passes 150 to 200 km, wait until you are near the apoapsis and thrust prograde until the periapsis is above 150 km.
+Possible failures: structural failure from aerodynamic load (going too fast in dense air or flying sideways), failure from acceleration (lots of thrust with nearly empty tanks), destruction by heat on reentry without a shield, impact with the ground. The fairing comes off by itself at 110 km. Deployed panels are torn off if the craft enters dense air. The parachute only opens with the payload already released, below 7 km.
 
-Ciencia: cada instrumento rinde distinto según el contexto (superficie, atmósfera baja, atmósfera alta, espacio cercano, espacio alto). Repetir la misma medición en el mismo contexto rinde cada vez menos. Los datos ocupan almacenamiento y solo cuentan del todo cuando llegan a Tierra: transmitidos con línea de vista a una de las tres estaciones terrestres, o recuperados al aterrizar.
+Science: each instrument yields differently depending on the context (surface, lower atmosphere, upper atmosphere, near space, high space). Repeating the same measurement in the same context yields less each time. Data takes up storage and only counts in full once it reaches Earth: transmitted with line of sight to one of the three ground stations, or recovered on landing.
 
-Misiones: "Primer CubeSat" (órbita, liberar el satélite, desplegar, medir, transmitir; presupuesto 12 M USD). "Ojo en la Tierra" (seguir un incendio forestal desde la órbita: el detalle de la cámara es de 6 m por píxel por cada 100 km de altura y la imagen sirve con 30 m o menos, de día y con el incendio a la vista; hay que lograrlo en 3 pasadas y bajar las imágenes de 40 MB; "Programar captura" dispara la cámara sola en el próximo sobrevuelo; más bajo da más detalle pero pasadas de enlace más cortas; presupuesto 10 M USD). "Juego libre" no tiene presupuesto ni reloj.
+Missions: "First CubeSat" (orbit, release the satellite, deploy, measure, transmit; budget 12 M USD). "Eye on Earth" (track a wildfire from orbit: camera detail is 6 m per pixel for every 100 km of altitude and an image is usable at 30 m or less, in daylight and with the fire in view; it has to be done on 3 passes and the 40 MB images downlinked; "Schedule a capture" fires the camera by itself on the next overpass; lower gives more detail but shorter link passes; budget 10 M USD). "Free play" has no budget or clock.
 
-Atlas: muestra dónde está cada planeta en una fecha, la distancia, el retraso de una señal de radio, la energía solar disponible y una estimación del impulso, la duración y la próxima ventana de lanzamiento para ir desde la órbita baja. El vuelo interplanetario todavía no es jugable.
+Atlas: shows where each planet is on a given date, the distance, the delay of a radio signal, the available solar power and an estimate of the delta-v, trip duration and next launch window to get there from low orbit. Interplanetary flight is not playable yet.
 
-Informe: después de cada vuelo explica qué pasó y por qué con números de la telemetría.`;
+Report: after each flight it explains what happened and why, using numbers from the telemetry.`;
 
 /** Límite simple por dirección: frena abusos de la clave. En serverless es aproximado. */
 const hits = new Map();
@@ -73,21 +73,21 @@ function extractText(data) {
  */
 export async function missionControl(body, apiKey, ip = 'local') {
   if (!apiKey) {
-    return { status: 503, json: { error: 'sin_clave', message: 'Control de Misión no está configurado: falta GEMINI_API_KEY en el servidor.' } };
+    return { status: 503, json: { error: 'sin_clave', message: 'Mission Control is not set up: GEMINI_API_KEY is missing on the server.' } };
   }
   if (limited(ip)) {
-    return { status: 429, json: { error: 'limite', message: 'Demasiadas preguntas seguidas. Espera unos minutos.' } };
+    return { status: 429, json: { error: 'limite', message: 'Too many questions in a row. Wait a few minutes.' } };
   }
   const messages = Array.isArray(body?.messages) ? body.messages.slice(-MAX_MESSAGES) : [];
   const turns = messages
     .map((m) => ({ role: m?.role === 'assistant' ? 'assistant' : 'user', text: clean(m?.text, MAX_TEXT).trim() }))
     .filter((m) => m.text);
   if (turns.length === 0 || turns[turns.length - 1].role !== 'user') {
-    return { status: 400, json: { error: 'sin_pregunta', message: 'Falta la pregunta.' } };
+    return { status: 400, json: { error: 'sin_pregunta', message: 'The question is missing.' } };
   }
   const context = clean(body?.context, MAX_CONTEXT).trim();
-  const talk = turns.map((m) => `${m.role === 'user' ? 'Jugador' : 'Control de Misión'}: ${m.text}`).join('\n');
-  const input = `Estado actual del juego:\n${context || '(sin datos)'}\n\nConversación hasta ahora:\n${talk}\n\nResponde al último mensaje del jugador.`;
+  const talk = turns.map((m) => `${m.role === 'user' ? 'Player' : 'Mission Control'}: ${m.text}`).join('\n');
+  const input = `Current game state:\n${context || '(no data)'}\n\nConversation so far:\n${talk}\n\nReply to the player's last message.`;
 
   let res;
   try {
@@ -104,21 +104,21 @@ export async function missionControl(body, apiKey, ip = 'local') {
       signal: AbortSignal.timeout(25000),
     });
   } catch {
-    return { status: 502, json: { error: 'red', message: 'No hubo respuesta del servicio de IA. Intenta de nuevo.' } };
+    return { status: 502, json: { error: 'red', message: 'The AI service did not respond. Try again.' } };
   }
   let data = null;
   try { data = await res.json(); } catch { /* respuesta sin JSON */ }
   if (!res.ok) {
     const detail = typeof data?.error?.message === 'string' ? data.error.message.slice(0, 300) : `HTTP ${res.status}`;
-    console.error('[mission-control] error del servicio:', res.status, detail);
+    console.error('[mission-control] service error:', res.status, detail);
     const message = res.status === 429
-      ? 'El servicio de IA alcanzó su límite de uso. Intenta más tarde.'
+      ? 'The AI service hit its usage limit. Try again later.'
       : res.status === 400 || res.status === 401 || res.status === 403
-        ? 'El servicio de IA rechazó la solicitud. Revisa la clave GEMINI_API_KEY.'
-        : 'El servicio de IA falló. Intenta de nuevo.';
+        ? 'The AI service rejected the request. Check the GEMINI_API_KEY key.'
+        : 'The AI service failed. Try again.';
     return { status: 502, json: { error: 'servicio', message } };
   }
   const text = extractText(data);
-  if (!text) return { status: 502, json: { error: 'vacio', message: 'El asistente no devolvió texto. Intenta reformular la pregunta.' } };
+  if (!text) return { status: 502, json: { error: 'vacio', message: 'The assistant returned no text. Try rephrasing the question.' } };
   return { status: 200, json: { text } };
 }
