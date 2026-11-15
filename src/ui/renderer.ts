@@ -302,6 +302,22 @@ export function render(
 
   // --- Marcadores de apoapsis y periapsis ---
   if (showOrbit && o.e < 1 && o.p > 0) {
+    // Path ahead of the craft, densely sampled and drawn over the Earth: on a low hop the whole
+    // arc above ground is too short for the full-orbit line above, which then hides underground.
+    // Before apoapsis it runs to the apoapsis; after it, down to the ground (or to periapsis).
+    {
+      ctx.beginPath();
+      pathAhead(f.r, f.v, o).forEach((pt, i) => {
+        const [x, y] = ws(pt);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      const stable = o.pe - RE > ATM_TOP;
+      ctx.strokeStyle = stable ? 'rgba(90,220,160,0.9)' : 'rgba(255,190,90,0.85)';
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash(stable ? [] : [7, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
     ctx.font = '600 12px ui-monospace, Menlo, monospace';
     const mark = (rad: number, ang: number, label: string, color: string) => {
       if (rad < RE) return;
@@ -314,11 +330,47 @@ export function render(
       ctx.fillStyle = color;
       ctx.fillText(label, x + 12, y + 4);
     };
-    mark(o.ap, o.argPe + Math.PI, `Ap ${Math.round((o.ap - RE) / 1000)} km`, '#7fc8ff');
-    mark(o.pe, o.argPe, `Pe ${Math.round((o.pe - RE) / 1000)} km`, '#ffd27f');
+    mark(o.ap, o.argPe + Math.PI, `Ap ${apsisAlt(o.ap - RE)}`, '#7fc8ff');
+    mark(o.pe, o.argPe, `Pe ${apsisAlt(o.pe - RE)}`, '#ffd27f');
   }
 
   drawNavball(ctx, w, h, f);
+}
+
+/**
+ * Points of the predicted path ahead of the craft, in world coordinates: to the apoapsis while
+ * rising, then down to the ground (or to periapsis if it never reaches the ground).
+ */
+export function pathAhead(
+  r: { x: number; y: number }, v: { x: number; y: number }, o: { p: number; e: number; argPe: number }, K = 160,
+): { x: number; y: number }[] {
+  const thC = Math.atan2(r.y, r.x);
+  const dir = r.x * v.y - r.y * v.x >= 0 ? 1 : -1;
+  const rising = r.x * v.x + r.y * v.y > 0;
+  const thEnd = rising ? o.argPe + Math.PI : o.argPe;
+  const TAU = Math.PI * 2;
+  let span = (((dir * (thEnd - thC)) % TAU) + TAU) % TAU;
+  const radAt = (s: number) => o.p / (1 + o.e * Math.cos(thC + dir * s - o.argPe));
+  // Falling, the radius only shrinks on the way to periapsis: find where it meets the ground.
+  if (!rising && radAt(span) < RE) {
+    let lo = 0, hi = span;
+    for (let k = 0; k < 50; k++) { const mid = (lo + hi) / 2; if (radAt(mid) >= RE) lo = mid; else hi = mid; }
+    span = lo;
+  }
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i <= K; i++) {
+    const s = span * (i / K), rad = radAt(s), th = thC + dir * s;
+    if (!(rad > 0) || rad > RE * 80) break;
+    pts.push({ x: rad * Math.cos(th), y: rad * Math.sin(th) });
+  }
+  return pts;
+}
+
+/** Apsis altitude for the map labels: meters below 1 km, one decimal below 10 km, whole km above. */
+export function apsisAlt(m: number): string {
+  if (m < 995) return `${Math.max(0, Math.round(m / 10) * 10)} m`;
+  if (m < 10e3) return `${(m / 1000).toFixed(1)} km`;
+  return `${Math.round(m / 1000)} km`;
 }
 
 /** Indicador de actitud: morro, prograda y retrógrada respecto al horizonte local. */
