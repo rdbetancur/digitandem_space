@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AU, BODIES, BODY, BodyId, P2, distance, lightTime, orbitPoint, position, solarFactor, trip } from '../sim/atlas';
 import { Design, computeStats } from '../sim/vehicle';
+import { BODY_IMAGES, bodyImageUrl } from './nasaLive';
 
 const n = (x: number, d = 0) => x.toLocaleString('en-US', { maximumFractionDigits: d, minimumFractionDigits: d });
 const DAY = 86400e3;
@@ -25,6 +26,18 @@ function duration(s: number): string {
   return `${n(d / 365.25, 1)} years`;
 }
 
+/** Duración de una rotación sobre su eje (NASA Planetary Fact Sheet). */
+const ROTATION: Record<BodyId, string> = {
+  sol: 'about 25 days at its equator', mercurio: '58.6 days', venus: '243 days, spinning backwards', tierra: '23.9 hours',
+  luna: '27.3 days', marte: '24.6 hours', jupiter: '9.9 hours', saturno: '10.7 hours', urano: '17.2 hours', neptuno: '16.1 hours',
+};
+
+/** Periodo orbital por la tercera ley de Kepler, a partir del semieje mayor en UA. */
+function yearLength(a: number): string {
+  const years = Math.pow(a, 1.5);
+  return years < 2 ? `${n(years * 365.25)} days` : `${n(years, 1)} Earth years`;
+}
+
 interface Props {
   design: Design;
   onHome: () => void;
@@ -35,7 +48,8 @@ export default function Atlas({ design, onHome, onLab }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dateRef = useRef(Date.now());
   const speedRef = useRef(0);
-  const view = useRef({ zoom: 0, panX: 0, panY: 0 });
+  // focus: cuerpo al que la cámara vuela y sigue. home: la cámara vuelve a la vista general.
+  const view = useRef({ zoom: 0, panX: 0, panY: 0, focus: null as BodyId | null, home: false });
   const visualRef = useRef(true);
   const selRef = useRef<BodyId>('marte');
   const [date, setDate] = useState(dateRef.current);
@@ -44,8 +58,14 @@ export default function Atlas({ design, onHome, onLab }: Props) {
   const [sel, setSel] = useState<BodyId>('marte');
   const stats = useMemo(() => computeStats(design), [design]);
 
-  const pick = (id: BodyId) => { selRef.current = id; setSel(id); };
-  const setScale = (v: boolean) => { visualRef.current = v; view.current = { zoom: 0, panX: 0, panY: 0 }; setVisual(v); };
+  const pick = (id: BodyId) => {
+    selRef.current = id; setSel(id);
+    // Elegir el Sol devuelve a la vista general; cualquier otro cuerpo acerca la cámara a él.
+    view.current.focus = id === 'sol' ? null : id;
+    view.current.home = id === 'sol';
+  };
+  const overview = () => { view.current.focus = null; view.current.home = true; };
+  const setScale = (v: boolean) => { visualRef.current = v; view.current = { zoom: 0, panX: 0, panY: 0, focus: null, home: false }; setVisual(v); };
   const setRate = (i: number) => { speedRef.current = SPEEDS[i].days; setSpeed(i); setDate(dateRef.current); };
   const today = () => { dateRef.current = Date.now(); setDate(dateRef.current); };
 
@@ -87,14 +107,38 @@ export default function Atlas({ design, onHome, onLab }: Props) {
         const e = position('tierra', t), m = position('luna', t);
         const [ex, ey] = screen(e);
         const a = Math.atan2(m.y - e.y, m.x - e.x);
-        return [ex + 15 * Math.cos(a), ey - 15 * Math.sin(a)];
+        const d = 15 * grow();
+        return [ex + d * Math.cos(a), ey - d * Math.sin(a)];
       }
       return screen(position(id, t));
     };
+    /** En escala visual los cuerpos crecen al acercar la cámara, para que el destino se vea grande. */
+    const grow = () => Math.pow(Math.max(1, Math.min(8, view.current.zoom / fit())), 0.8);
     const dotRadius = (id: BodyId) => {
       const b = BODY[id];
-      if (visualRef.current) return id === 'sol' ? 9 : 2.6 + 1.7 * Math.log10(b.radio / 1000);
+      if (visualRef.current) return (id === 'sol' ? 9 : 2.6 + 1.7 * Math.log10(b.radio / 1000)) * grow();
       return Math.max(id === 'sol' ? 3 : 2, ((b.radio * 1000) / AU) * view.current.zoom);
+    };
+    /** Vuelo suave de la cámara hacia el cuerpo elegido, o de vuelta a la vista general. */
+    const glide = (t: number, dt: number) => {
+      const v = view.current;
+      if (!v.focus && !v.home) return;
+      const base = fit();
+      let target = base;
+      if (v.focus) {
+        const near = v.focus === 'luna' || v.focus === 'tierra';
+        target = base * (visualRef.current ? (v.focus === 'luna' ? 12 : 9) : near ? 2500 : 12);
+      }
+      const kz = 1 - Math.exp(-dt * 2.6), kp = 1 - Math.exp(-dt * 4.5);
+      v.zoom = Math.exp(Math.log(v.zoom) + (Math.log(target) - Math.log(v.zoom)) * kz);
+      if (v.focus) {
+        const c = area();
+        const [sx, sy] = bodyScreen(v.focus, t);
+        v.panX += (c.cx - sx) * kp; v.panY += (c.cy - sy) * kp;
+      } else {
+        v.panX -= v.panX * kp; v.panY -= v.panY * kp;
+        if (Math.abs(Math.log(v.zoom / target)) < 0.002 && Math.hypot(v.panX, v.panY) < 0.5) v.home = false;
+      }
     };
 
     const draw = (t: number) => {
@@ -134,6 +178,15 @@ export default function Atlas({ design, onHome, onLab }: Props) {
         }
         ctx.fillStyle = b.color;
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+        if (b.id !== 'sol' && r > 5) {
+          // Día y noche: la cara que mira al Sol queda iluminada.
+          const [sx, sy] = bodyScreen('sol', t);
+          const a = Math.atan2(sy - y, sx - x);
+          const g = ctx.createLinearGradient(x + Math.cos(a) * r, y + Math.sin(a) * r, x - Math.cos(a) * r, y - Math.sin(a) * r);
+          g.addColorStop(0, 'rgba(255,255,255,0.22)'); g.addColorStop(0.45, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.72)');
+          ctx.fillStyle = g;
+          ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+        }
         if (b.id === selRef.current) {
           ctx.strokeStyle = '#ffb347';
           ctx.beginPath(); ctx.arc(x, y, r + 5, 0, Math.PI * 2); ctx.stroke();
@@ -149,6 +202,7 @@ export default function Atlas({ design, onHome, onLab }: Props) {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       if (speedRef.current > 0) dateRef.current += speedRef.current * DAY * dt;
+      if (view.current.zoom > 0) glide(dateRef.current, dt);
       draw(dateRef.current);
       if (now - hudAt > 120 && speedRef.current > 0) { hudAt = now; setDate(dateRef.current); }
       raf = requestAnimationFrame(frame);
@@ -158,6 +212,7 @@ export default function Atlas({ design, onHome, onLab }: Props) {
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
       const v = view.current;
+      v.focus = null; v.home = false;
       const k = Math.exp(-e.deltaY * 0.0015);
       const next = Math.max(fit() * 0.5, Math.min(fit() * 4000, v.zoom * k));
       const s = next / v.zoom;
@@ -172,6 +227,7 @@ export default function Atlas({ design, onHome, onLab }: Props) {
       if (!drag) return;
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       drag.moved += Math.abs(dx) + Math.abs(dy);
+      if (drag.moved >= 5) { view.current.focus = null; view.current.home = false; }
       view.current.panX += dx; view.current.panY += dy;
       drag.x = e.clientX; drag.y = e.clientY;
     };
@@ -187,7 +243,11 @@ export default function Atlas({ design, onHome, onLab }: Props) {
         const d = Math.hypot(x - mx, y - my) - dotRadius(b.id);
         if (d < bestD) { bestD = d; best = b.id; }
       }
-      if (best) { selRef.current = best; setSel(best); }
+      if (best) {
+        selRef.current = best; setSel(best);
+        view.current.focus = best === 'sol' ? null : best;
+        view.current.home = best === 'sol';
+      }
     };
     canvas.addEventListener('wheel', wheel, { passive: false });
     canvas.addEventListener('pointerdown', down);
@@ -223,6 +283,7 @@ export default function Atlas({ design, onHome, onLab }: Props) {
           ))}
         </div>
         <button className="btn tiny" onClick={today}>Today</button>
+        <button className="btn tiny" onClick={overview} title="Fly back to the whole solar system">Overview</button>
         <button className={`btn tiny ${visual ? '' : 'on'}`} onClick={() => setScale(!visual)} title="Switch between visual scale and physical scale">
           {visual ? 'Visual scale' : 'Physical scale'}
         </button>
@@ -235,8 +296,15 @@ export default function Atlas({ design, onHome, onLab }: Props) {
           ))}
         </div>
         <h3 className="atlas-name"><i style={{ background: b.color }} />{b.nombre}</h3>
+        <figure className="atlas-photo" key={sel}>
+          <img src={bodyImageUrl(sel)} alt={BODY_IMAGES[sel].caption} loading="lazy" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }} />
+          <figcaption>{BODY_IMAGES[sel].caption} <span>Image: {BODY_IMAGES[sel].credit}</span></figcaption>
+        </figure>
         <p className="note">{b.tipo}. {b.interes}</p>
         <div className="kv">
+          <span>One day lasts</span><b>{ROTATION[sel]}</b>
+          {sel !== 'sol' && <><span>One year lasts</span><b>{sel === 'luna' ? '27.3 days around Earth' : yearLength(b.el!.a)}</b></>}
+          <span>Escape velocity</span><b>{n(Math.sqrt(2 * b.gravedad * b.radio * 1000) / 1000, 1)} km/s</b>
           <span>Gravity</span><b>{n(b.gravedad, b.gravedad < 20 ? 2 : 0)} m/s² · {n(b.gravedad / 9.80665, 2)} g</b>
           <span>Radius</span><b>{n(b.radio)} km</b>
           <span>Mean temperature</span><b>{n(b.temperatura)} °C</b>

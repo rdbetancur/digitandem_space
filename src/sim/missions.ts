@@ -33,6 +33,8 @@ export interface Mission {
   panel?: (f: Flight) => { k: string; v: string; tone?: 'ok' | 'bad' }[];
   /** Acción propia de la misión. run devuelve un aviso para el jugador, o null. */
   accion?: { texto: (f: Flight) => string; run: (f: Flight) => string | null };
+  /** Imágenes útiles tomadas en el vuelo, con su detalle en metros por píxel. */
+  capturas?: (f: Flight) => { id: number; gsd: number }[];
 }
 
 const inOrbit = (f: Flight) => {

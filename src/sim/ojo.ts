@@ -174,6 +174,7 @@ export const OJO: Mission = {
   target: { nombre: 'Wildfire', pos: targetPos },
   onStep,
   panel,
+  capturas: (f) => f.measurements.filter((m) => f.flags[`ojo:util:${m.id}`]).map((m) => ({ id: m.id, gsd: gsd(m.alt) })),
   accion: {
     texto: (f) => (f.flags[ARMED] ? 'Capture scheduled · cancel' : 'Schedule a capture on the next overpass'),
     run: (f) => {

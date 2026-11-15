@@ -10,6 +10,7 @@ import { Mission, objectivesDone } from '../sim/missions';
 import { CONTEXTS, REPEAT_FACTOR, SCIENCE_VALUE, contextOf } from '../sim/science';
 import { Design } from '../sim/vehicle';
 import { Camera, Particle, fitZoom, render } from './renderer';
+import { FireCapture } from './FireTarget';
 import FlightGuide from './FlightGuide';
 import { describeFlight, setFlightContext } from './missionControlContext';
 import Term from './Term';
@@ -36,6 +37,7 @@ interface Hud {
   sciO: number; sciE: number; pendMB: number; objectives: boolean[]; ended: string | null; landed: boolean;
   launched: boolean; events: { t: number; text: string; kind: string }[]; orbiting: boolean;
   instValues: Record<string, number>;
+  shots: { id: number; gsd: number }[];
   panel: { k: string; v: string; tone?: 'ok' | 'bad' }[];
   accion: string | null;
 }
@@ -73,6 +75,7 @@ function snapshot(f: FlightState, mission: Mission, warp: number): Hud {
     objectives: objectivesDone(mission, f), ended: f.ended, landed: f.landed, launched: f.stats.liftoffT !== null,
     events: f.events.slice(-5), orbiting: !f.landed && o.e < 1 && o.pe - RE > ATM_TOP,
     instValues,
+    shots: mission.capturas ? mission.capturas(f) : [],
     panel: mission.panel ? mission.panel(f) : [],
     accion: mission.accion ? mission.accion.texto(f) : null,
   };
@@ -417,6 +420,8 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
           <div key={`${e.t}-${i}`} className={`event ${e.kind}`}><span>{clock(e.t)}</span>{e.text}</div>
         ))}
       </div>
+
+      {mission.id === 'ojo' && <FireCapture shots={hud.shots} />}
 
       {toast && <div className="hud toast">{toast}</div>}
 
