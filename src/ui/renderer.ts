@@ -35,7 +35,7 @@ export function fitZoom(f: Flight, w: number, h: number): number {
 
 export function render(
   ctx: CanvasRenderingContext2D, w: number, h: number, f: Flight, cam: Camera, time: number, particles: Particle[],
-  target?: Vec,
+  target?: Vec, clean = false,
 ) {
   const zoom = cam.zoom;
   const lz = Math.log10(zoom);
@@ -79,7 +79,7 @@ export function render(
 
   // --- Órbita prevista (antes de la Tierra para que la tape) ---
   const o = orbitOf(f.r, f.v);
-  const showOrbit = !f.landed && zoom > 40 && Math.hypot(f.v.x, f.v.y) > 300;
+  const showOrbit = !clean && !f.landed && zoom > 40 && Math.hypot(f.v.x, f.v.y) > 300;
   if (showOrbit && o.p > 0) {
     ctx.beginPath();
     let pen = false;
@@ -334,7 +334,7 @@ export function render(
     mark(o.pe, o.argPe, `Pe ${apsisAlt(o.pe - RE)}`, '#ffd27f');
   }
 
-  drawNavball(ctx, w, h, f);
+  if (!clean) drawNavball(ctx, w, h, f);
 }
 
 /**

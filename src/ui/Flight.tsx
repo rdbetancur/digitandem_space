@@ -109,6 +109,9 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
   const [sciOpen, setSciOpen] = useState(false);
   const pausedRef = useRef(false);
   const [paused, setPaused] = useState(false);
+  // Clean view (U): only the craft and the world, for recording clips.
+  const cleanRef = useRef(false);
+  const [clean, setClean] = useState(false);
   // En teléfonos empieza cerrado para no tapar la navegación.
   const [rightOpen, setRightOpen] = useState(() => window.innerWidth > 640);
   const mat = MATERIALS[design.material];
@@ -173,6 +176,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       const f = flightRef.current;
       if (k === 'Escape') { togglePause(); return; }
       if (k === 'n') { toggleMute(); return; }
+      if (k === 'u') { cleanRef.current = !cleanRef.current; setClean(cleanRef.current); return; }
       if (pausedRef.current) return;
       if (k === ' ') { f.autopilot = false; stageAction(f); setHelp(false); }
       else if (k === 'z') { f.autopilot = false; setThrottle(f, 1); }
@@ -303,7 +307,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       }
       const cam = camRef.current;
       updateCamera(cam, real, Math.atan2(f.r.y, f.r.x));
-      render(ctx, canvas.clientWidth, canvas.clientHeight, f, cam, time, particles.current, mission.target?.pos(f.t));
+      render(ctx, canvas.clientWidth, canvas.clientHeight, f, cam, time, particles.current, mission.target?.pos(f.t), cleanRef.current);
       if (now - hudAt > 90) { hudAt = now; setHud(snapshot(f, mission, warpRef.current)); }
       roomFlightTick(now);
       raf = requestAnimationFrame(frame);
@@ -321,7 +325,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
   const finish = () => { endFlight(f, 'usuario'); onEnd(f); };
 
   return (
-    <div className={`flight ${guideOpen && !help ? 'guide-enabled' : ''}`}>
+    <div className={`flight ${guideOpen && !help ? 'guide-enabled' : ''} ${clean ? 'clean' : ''}`}>
       <canvas ref={canvasRef} className="flight-canvas" />
 
       <div className="hud hud-top">
@@ -472,6 +476,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
             <span className="keycap">M</span><span>Orbital map · the mouse wheel zooms</span>
             <span className="keycap">G</span><span>Deploy · stow panels and antenna</span>
             <span className="keycap">N</span><span>Sound on · off</span>
+            <span className="keycap">U</span><span>Clean view: hide the interface (for recording)</span>
             <span className="keycap">Esc</span><span>Pause</span>
             <span className="keycap">C · 1–4</span><span>Science panel · use instrument</span>
           </div>
