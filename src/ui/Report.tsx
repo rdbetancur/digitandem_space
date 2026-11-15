@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { LUNA } from '../sim/luna';
 import { Report as ReportData } from '../sim/report';
 
@@ -11,9 +12,11 @@ interface Props {
   onRetry: () => void;
   onLab?: () => void;
   onHome: () => void;
+  /** Tripulación y botón para compartir el vuelo. */
+  extra?: ReactNode;
 }
 
-export default function Report({ report, onRetry, onLab, onHome }: Props) {
+export default function Report({ report, onRetry, onLab, onHome, extra }: Props) {
   return (
     <div className="report">
       <div className="report-inner">
@@ -87,6 +90,8 @@ export default function Report({ report, onRetry, onLab, onHome }: Props) {
             </section>
           </aside>
         </div>
+
+        {extra}
 
         <footer className="report-actions">
           <button className="btn primary" onClick={onRetry}>Fly again</button>

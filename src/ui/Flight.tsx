@@ -14,6 +14,7 @@ import { FireCapture } from './FireTarget';
 import FlightGuide from './FlightGuide';
 import { describeFlight, setFlightContext } from './missionControlContext';
 import Term from './Term';
+import { CrewTag } from './Team';
 import { isMapView, updateCamera, zoomCamera } from './flightCamera';
 import { circularizationEstimate } from './circularization';
 import { isMuted, playCrash, playCue, playTouchdown, setEngine, setMuted, unlockAudio } from './audio';
@@ -334,7 +335,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       </div>
 
       <div className="hud panel hud-left">
-        <h4>Navigation</h4>
+        <h4>Navigation<CrewTag role="pilot" /></h4>
         <Row k="Altitude" v={dist(hud.alt)} />
         <Row k={hud.alt < 45e3 ? 'Speed (ground)' : 'Orbital speed'} v={`${n(hud.alt < 45e3 ? hud.speedSurf : hud.speed)} m/s`} />
         <Row k="Vertical speed" v={`${n(hud.vr)} m/s`} />
@@ -353,7 +354,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         </button>
         {mission.objetivos.length > 0 && (
           <>
-            <h4>{mission.nombre}</h4>
+            <h4>{mission.nombre}<CrewTag role="director" /></h4>
             <ul className="objectives">
               {mission.objetivos.map((ob, i) => (
                 <li key={ob.id} className={hud.objectives[i] ? 'done' : ''} title={ob.ayuda}>
@@ -393,7 +394,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       </div>
 
       <div className="hud panel hud-bottom-left">
-        <h4>Systems</h4>
+        <h4>Systems<CrewTag role="engineer" /></h4>
         <Gauge label={`Battery ${hud.sunlit ? '· in sunlight' : '· in shadow'}`} value={`${n(hud.battery)} Wh`} pct={(hud.battery / Math.max(1, hud.batteryMax)) * 100} plain invert />
         <Gauge label="Data on board" value={`${n(hud.storage, 1)} / ${n(hud.storageMax)} MB`} pct={(hud.storage / hud.storageMax) * 100} plain />
         <Row k="Link" v={hud.link ? `station · ${n((hud.delay ?? 0) * 1000, 1)} ms` : 'no line of sight'} tone={hud.link ? 'ok' : 'bad'} />
@@ -409,7 +410,7 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
 
       {sciOpen && (
         <div className="hud panel science">
-          <h4>Instruments · {hud.context}</h4>
+          <h4>Instruments · {hud.context}<CrewTag role="scientist" /></h4>
           {design.instruments.length === 0 && <p className="muted">This craft carries no instruments.</p>}
           {design.instruments.map((i, idx) => (
             <button key={i} className="inst" onClick={() => doMeasure(i)}>

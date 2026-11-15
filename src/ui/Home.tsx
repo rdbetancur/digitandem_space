@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { MISSIONS } from '../sim/missions';
 import { Report } from '../sim/report';
 
@@ -8,22 +9,24 @@ interface Props {
   onStart: (missionId: string) => void;
   onAtlas: () => void;
   onClearLog: () => void;
+  /** Tripulación y tablero de vuelos. */
+  extra?: ReactNode;
 }
 
 const SOON = [
   { nombre: 'Career', texto: 'Run an agency: budget, contracts and research.' },
   { nombre: 'Mars and beyond', texto: 'Land on Mars with a heat shield, parachutes and aerobraking; grow a crewed base and make propellant from ice.' },
-  { nombre: 'Crew of 2 to 4', texto: 'Pilot, navigator, engineer and scientist on the same craft.' },
+  { nombre: 'Online co-op', texto: 'Today a crew of up to four shares one screen and trades designs by link. Next: each role on its own device, live.' },
 ];
 
-export default function Home({ logbook, onStart, onAtlas, onClearLog }: Props) {
+export default function Home({ logbook, onStart, onAtlas, onClearLog, extra }: Props) {
   return (
     <div className="home">
       <div className="home-sky" aria-hidden />
       <div className="home-inner">
         <header className="hero">
           <p className="kicker">NASA Space Apps Challenge 2026 · Space Mission Design Game</p>
-          <h1>ASCENSO</h1>
+          <h1>ASCENT</h1>
           <p className="lead">Design a craft, put it to the test, fly it to orbit and do science. Every engineering decision has a physical consequence you can see and understand.</p>
         </header>
 
@@ -63,6 +66,8 @@ export default function Home({ logbook, onStart, onAtlas, onClearLog }: Props) {
             <span className="go">Open the atlas →</span>
           </button>
         </section>
+
+        {extra}
 
         <section className="soon">
           <h3>In development</h3>

@@ -10,6 +10,7 @@ import { Report } from '../sim/report';
 import { LanderView, drawDescent, drawSurface } from './landerDraw';
 import { setFlightContext } from './missionControlContext';
 import Term from './Term';
+import { CrewTag } from './Team';
 import { isMuted, playClick, playCrash, playCue, playTouchdown, setEngine, setMuted, unlockAudio } from './audio';
 import { lunarEnvironment, LUNAR_SHADOWS } from '../sim/lunarEnvironment';
 import { lunarCoordinates, terrainElevation } from '../sim/lunarTerrain';
@@ -292,7 +293,7 @@ export default function Lander({ onEnd, onHome }: Props) {
       <div className="hud panel hud-left">
         {descent ? (
           <>
-            <h4>Descent</h4>
+            <h4>Descent<CrewTag role="pilot" /></h4>
             <Row k="Height above terrain" v={dist(hud.alt)} />
             <Row k="Vertical speed" v={`${n(hud.vv, 1)} m/s`} tone={hud.alt < 200 ? (-hud.vv <= SAFE_VV ? 'ok' : 'bad') : undefined} />
             <Row k="Horizontal speed" v={`${n(hud.vh, 1)} m/s`} />
@@ -307,7 +308,7 @@ export default function Lander({ onEnd, onHome }: Props) {
           </>
         ) : (
           <>
-            <h4>Base</h4>
+            <h4>Base<CrewTag role="engineer" /></h4>
             <Gauge label={`Battery · ${hud.lit ? 'in sunlight' : 'in shadow'}`} value={`${n(hud.battery / 1000, 1)} kWh`} pct={(hud.battery / BATT_MAX) * 100} low={15} />
             <Row k="Power balance" v={`${net >= 0 ? '+' : ''}${n(net)} W`} tone={net >= 0 ? 'ok' : 'bad'} />
             <Gauge label="Oxygen" value={`${n(hud.o2, 1)} kg · ${n(hud.o2h)} h`} pct={(hud.o2h / 72) * 100} low={25} />
@@ -333,7 +334,7 @@ export default function Lander({ onEnd, onHome }: Props) {
         <button className="btn tiny wide hud-right-toggle" onClick={() => setRightOpen((v) => !v)} aria-expanded={rightOpen}>
           {rightOpen ? 'Hide panel ▴' : 'Mission and controls ▾'}
         </button>
-        <h4>{LUNA.nombre}</h4>
+        <h4>{LUNA.nombre}<CrewTag role="director" /></h4>
         <ul className="objectives">
           {LUNA_OBJECTIVES.map((ob, i) => (
             <li key={ob.id} className={done[i] ? 'done' : ''} title={ob.ayuda}>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ANTENNAS, AntennaId, CORES, CoreId, ENGINES, EngineId, INSTRUMENTS, InstrumentId, MATERIALS, MaterialId,
   TANKS, TankId,
@@ -20,9 +20,13 @@ interface Props {
   onChange: (d: Design) => void;
   onLaunch: () => void;
   onHome: () => void;
+  /** Tripulación y botón de compartir. */
+  headerExtra?: ReactNode;
+  /** Aviso de diseño recibido por enlace. */
+  banner?: ReactNode;
 }
 
-export default function Lab({ design, mission, onChange, onLaunch, onHome }: Props) {
+export default function Lab({ design, mission, onChange, onLaunch, onHome, headerExtra, banner }: Props) {
   const stats = useMemo(() => computeStats(design), [design]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [tunnel, setTunnel] = useState<{ maxLoad: number; alt: number; speed: number } | null>(null);
@@ -103,6 +107,7 @@ export default function Lab({ design, mission, onChange, onLaunch, onHome }: Pro
           <h2>Lab</h2>
           <p className="muted">{mission.nombre}{mission.presupuesto ? ` · budget ${n(mission.presupuesto)} M USD` : ' · no budget, no clock'}</p>
         </div>
+        {headerExtra}
         <label className="field inline">
           <span>Base designs</span>
           <select value="" onChange={(e) => { if (e.target.value) { setTunnel(null); onChange(cloneDesign(PRESETS[e.target.value])); } }}>
@@ -111,6 +116,8 @@ export default function Lab({ design, mission, onChange, onLaunch, onHome }: Pro
           </select>
         </label>
       </header>
+
+      {banner}
 
       <div className="lab-body">
         <section className="lab-col parts">
