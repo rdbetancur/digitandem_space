@@ -98,20 +98,22 @@ export function formatCoords(lat: number, lon: number): string {
 }
 
 /** Imagen de cada cuerpo en la NASA Image and Video Library, con su crédito. */
-export const BODY_IMAGES: Record<BodyId, { id: string; caption: string; credit: string }> = {
+/** `src` overrides the NASA library URL with a local copy (Venus: one half of a two-panel image). */
+export const BODY_IMAGES: Record<BodyId, { id: string; caption: string; credit: string; src?: string }> = {
   sol: { id: 'GSFC_20171208_Archive_e002035', caption: 'The Sun in extreme ultraviolet light, seen by the Solar Dynamics Observatory (2010).', credit: 'NASA/GSFC/SDO' },
-  mercurio: { id: 'GSFC_20171208_Archive_e001922', caption: 'First color image of Mercury taken from orbit, by MESSENGER (2011).', credit: 'NASA/Johns Hopkins APL/Carnegie Institution' },
-  venus: { id: 'PIA23791', caption: 'Venus and its cloud tops, from Mariner 10 (1974).', credit: 'NASA/JPL-Caltech' },
+  mercurio: { id: 'PIA15160', caption: 'The whole globe of Mercury, a mosaic of MESSENGER images (2011).', credit: 'NASA/Johns Hopkins APL/Carnegie Institution of Washington' },
+  venus: { id: 'PIA23791', caption: 'Venus and its cloud tops in natural color, from Mariner 10 (1974).', credit: 'NASA/JPL-Caltech', src: './nasa/venus-mariner10-pia23791.jpg' },
   tierra: { id: 'GSFC_20171208_Archive_e001386', caption: 'Blue Marble 2012: Earth from the Suomi NPP satellite.', credit: 'NASA/NOAA/GSFC/Suomi NPP' },
   luna: { id: 'PIA00405', caption: 'The Moon in a color mosaic from the Galileo spacecraft (1992).', credit: 'NASA/JPL/USGS' },
-  marte: { id: 'PIA00003', caption: 'Mars and the Valles Marineris canyon system, a Viking orbiter mosaic.', credit: 'NASA/JPL/USGS' },
+  marte: { id: 'PIA00407', caption: 'Mars and the Valles Marineris canyon system, a global color mosaic from the Viking orbiters.', credit: 'NASA/JPL/USGS' },
   jupiter: { id: 'PIA04866', caption: 'Jupiter in true color, a portrait from the Cassini spacecraft (2000).', credit: 'NASA/JPL/Space Science Institute' },
   saturno: { id: 'PIA06193', caption: 'Saturn and its rings in natural color, from Cassini (2004).', credit: 'NASA/JPL/Space Science Institute' },
-  urano: { id: 'PIA00032', caption: 'Uranus in true color (left) and false color (right), from Voyager 2 (1986).', credit: 'NASA/JPL' },
+  urano: { id: 'PIA18182', caption: 'Uranus in true color, from Voyager 2 (1986).', credit: 'NASA/JPL-Caltech' },
   neptuno: { id: 'PIA00046', caption: 'Neptune and its Great Dark Spot, from Voyager 2 (1989).', credit: 'NASA/JPL' },
 };
 
 export function bodyImageUrl(id: BodyId): string {
   const nasaId = BODY_IMAGES[id].id;
+  if (BODY_IMAGES[id].src) return BODY_IMAGES[id].src!;
   return `https://images-assets.nasa.gov/image/${nasaId}/${nasaId}~small.jpg`;
 }
