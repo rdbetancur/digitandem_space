@@ -344,3 +344,7 @@ select, input[type='text'], input:not([type]) {
   .lander .events { bottom: 12px; left: 12px; transform: none; align-items: flex-start; width: min(360px, 30vw); }
   .lander .event { text-align: left; }
 }
+
+/* ---------- Clean view (U key in flight): only the craft and the world, for recording ---------- */
+.flight.clean > :not(canvas) { display: none !important; }
+body:has(.flight.clean) .mc-fab, body:has(.flight.clean) .room-pill { display: none !important; }
