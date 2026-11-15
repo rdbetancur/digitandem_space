@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALT0, FLARE, FLARE_WARN, HIGH_GATE, Luna, THRUST, MU_MOON, R_MOON, SAFE_VV, SHADOW, SITE_RADIUS, SURVIVE_H,
-  brakingDistance, canAssist, createLuna, mass, localFrame, lunaAction, lunaObjectives, lunaReport, predictPath, setThrottle,
+  brakingDistance, canAssist, createLuna, describeLuna, mass, maxWarpLuna, localFrame, lunaAction, lunaObjectives, lunaReport, predictPath, setThrottle,
   siteDistance, stepDescent, stepSurface,
 } from './luna';
 
@@ -164,5 +164,35 @@ describe('lunar survival', () => {
     const r = lunaReport(s);
     expect(r.resultado).toBe('exito');
     expect(r.sugerencias.some((x) => x.includes('Mars'))).toBe(true);
+  });
+});
+
+describe('lunar review fixes', () => {
+  it('with no propellant, coasting time warp is not stuck at 2x', () => {
+    const s = createLuna();
+    s.prop = 0;
+    expect(brakingDistance(s)).toBe(Infinity);
+    expect(maxWarpLuna(s)).toBe(100);
+  });
+
+  it('Mission Control gets English words, not internal ids', () => {
+    const s = createLuna();
+    s.assist = 'frenado';
+    expect(describeLuna(s)).toContain('assist braking');
+    s.prop = 0;
+    expect(describeLuna(s)).toContain('no propellant left');
+    s.ended = 'energia';
+    const text = describeLuna(s);
+    expect(text).toContain('the base lost power');
+    for (const id of ['frenado', 'choque', 'energia', 'oxigeno', 'radiacion', 'completada', 'usuario', 'Infinity', '∞']) {
+      expect(text).not.toContain(id);
+    }
+  });
+
+  it('the lunar report carries water and oxygen in its telemetry', () => {
+    const s = survive(land(), goodPlan);
+    const r = lunaReport(s);
+    expect(r.cifras.find((c) => c.k === 'Water extracted')!.v).not.toBe('0.0 kg');
+    expect(r.cifras.find((c) => c.k === 'Oxygen produced')!.v).not.toBe('0.0 kg');
   });
 });

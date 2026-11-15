@@ -51,6 +51,7 @@ function snapshot(s: Luna, warp: number, impact: number | null): Hud {
 
 function hint(h: Hud): string {
   if (h.phase === 'descenso') {
+    if (h.prop <= 0) return 'No propellant left: the engine can no longer brake. With no air on the Moon, nothing else will slow you down.';
     if (h.alt < 2000 && !h.landingAssist) return 'Below 2 km the radar sees the ground: press L for the landing assist, or use Vertical and keep the descent rate near a tenth of your altitude.';
     if (h.landingAssist) return 'The landing assist is holding a safe descent rate and cancelling drift. Watch the propellant.';
     if (h.throttle > 0) return 'Keep braking. The Braking assist aims to stop the horizontal speed just as you reach about 1.5 km. If it runs out higher up, lower the throttle.';
@@ -257,7 +258,7 @@ export default function Lander({ onEnd, onHome }: Props) {
             <Row k="Thrust angle" v={`${n(hud.pitch)}° from vertical`} />
             <h4>Targeting</h4>
             <Row k="Distance to site" v={dist(hud.site)} />
-            <Row k="Braking distance" v={dist(hud.braking)} tone={hud.braking > hud.site && hud.throttle === 0 && hud.vh > 100 ? 'bad' : undefined} />
+            <Row k="Braking distance" v={isFinite(hud.braking) ? dist(hud.braking) : hud.prop > 0 ? 'not enough propellant' : 'no propellant'} tone={!isFinite(hud.braking) || hud.braking > hud.site && hud.throttle === 0 && hud.vh > 100 ? 'bad' : undefined} />
             <Row k="Impact if engine off" v={hud.impactMiss === null ? 'stays in orbit' : `${dist(Math.abs(hud.impactMiss))} ${hud.impactMiss > 0 ? 'short' : 'long'}`} />
             <p className="note">{hint(hud)}</p>
           </>

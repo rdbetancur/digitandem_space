@@ -259,6 +259,8 @@ export function maxWarpLuna(s: Luna): number {
   // Cerca del punto de frenado el reloj se frena solo, para no pasarse del sitio.
   const d = siteDistance(s);
   const b = brakingDistance(s);
+  // Sin propelente para frenar no hay punto de frenado que cuidar.
+  if (!isFinite(b)) return 100;
   if (d > 0 && d < b + 20e3) return 2;
   if (d > 0 && d < b + 150e3) return 10;
   return 100;
@@ -587,6 +589,13 @@ export function lunaReport(s: Luna): Report {
   };
 }
 
+/** Etiquetas en inglés de los identificadores internos, para el texto que recibe Control de Misión. */
+export const ASSIST_TEXT: Record<Assist, string> = { manual: 'manual', frenado: 'braking', vertical: 'vertical' };
+export const LUNA_END_TEXT: Record<LunaEnd, string> = {
+  choque: 'crashed on the surface', energia: 'the base lost power and the cabin froze', oxigeno: 'out of oxygen',
+  radiacion: 'radiation dose over the limit', completada: 'completed, the crew survived 10 days', usuario: 'ended by the player',
+};
+
 /** Resumen en texto para Control de Misión. */
 export function describeLuna(s: Luna): string {
   const done = lunaObjectives(s);
@@ -594,10 +603,12 @@ export function describeLuna(s: Luna): string {
   if (s.phase === 'descenso') {
     const fr = localFrame(s);
     const p = predictPath(s);
+    const b = brakingDistance(s);
+    const miss = p.impact === null ? 0 : wrap(SITE_ANGLE - p.impact) * R_MOON;
     lines.push(
       `Lunar descent, T+${n(s.t)} s. Altitude ${n(fr.alt)} m, vertical speed ${n(fr.vv, 1)} m/s, horizontal speed ${n(fr.vh, 1)} m/s.`,
-      `Distance to site ${n(siteDistance(s) / 1000, 1)} km, braking distance at full thrust ${n(brakingDistance(s) / 1000, 1)} km. ${p.impact === null ? 'Still in a stable orbit.' : `If the engine stays off, impact ${n((wrap(SITE_ANGLE - p.impact) * R_MOON) / 1000, 1)} km before the site.`}`,
-      `Throttle ${n(s.throttle * 100)} %, thrust angle ${n((s.pitch * 180) / Math.PI)}° from vertical, assist ${s.landingAssist ? 'landing assist' : s.assist}. Propellant ${n(s.prop)} kg, delta-v left ${n(dvLeft(s))} m/s.`,
+      `Distance to site ${n(siteDistance(s) / 1000, 1)} km, braking distance at full thrust ${isFinite(b) ? `${n(b / 1000, 1)} km` : s.prop > 0 ? 'unreachable: not enough propellant to stop' : 'none: no propellant left'}. ${p.impact === null ? 'Still in a stable orbit.' : `If the engine stays off, impact ${n(Math.abs(miss) / 1000, 1)} km ${miss >= 0 ? 'before' : 'past'} the site.`}`,
+      `Throttle ${n(s.throttle * 100)} %, thrust angle ${n((s.pitch * 180) / Math.PI)}° from vertical, assist ${s.landingAssist ? 'landing assist' : ASSIST_TEXT[s.assist]}. Propellant ${n(s.prop)} kg, delta-v left ${n(dvLeft(s))} m/s.`,
     );
   } else {
     const pb = powerBalance(s);
@@ -607,7 +618,7 @@ export function describeLuna(s: Luna): string {
       `Panels ${s.panels ? 'deployed' : 'stowed'}, drill ${s.drill ? 'on' : 'off'}, electrolyzer ${s.electro ? 'on' : 'off'}, crew ${s.shelter ? 'in the shelter' : 'in the cabin'}.`,
     );
   }
-  if (s.ended) lines.push(`Mission ended: ${s.ended}.`);
+  if (s.ended) lines.push(`Mission ended: ${LUNA_END_TEXT[s.ended]}.`);
   lines.push(`Objectives: ${LUNA_OBJECTIVES.map((o, i) => `${done[i] ? '[done]' : '[pending]'} ${o.texto}`).join('; ')}.`);
   const ev = s.events.slice(-5).map((e) => e.text);
   if (ev.length) lines.push(`Latest events: ${ev.join(' | ')}`);
