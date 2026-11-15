@@ -7,6 +7,7 @@ import { predictAscentLoad } from '../sim/flight';
 import { Mission } from '../sim/missions';
 import { Design, PRESETS, StageDesign, cloneDesign, computeStats, hasFairing } from '../sim/vehicle';
 import { drawVehicle, vehicleHeight } from './vehicleDraw';
+import Term from './Term';
 
 const n = (x: number, d = 0) => x.toLocaleString('es-CO', { maximumFractionDigits: d, minimumFractionDigits: d });
 /** Delta-v de referencia para órbita baja terrestre, incluidas las pérdidas. */
@@ -179,7 +180,7 @@ export default function Lab({ design, mission, onChange, onLaunch, onHome }: Pro
                 </div>
                 <div className="stage-stats">
                   <span>Δv <b>{n(st.dvVac)} m/s</b></span>
-                  <span>Empuje/peso <b className={st.twr < 1 && i === 0 ? 'bad' : ''}>{n(st.twr, 2)}</b></span>
+                  <span><Term text="Empuje/peso" /> <b className={st.twr < 1 && i === 0 ? 'bad' : ''}>{n(st.twr, 2)}</b></span>
                   <span>Quema <b>{n(st.burnTime)} s</b></span>
                 </div>
               </div>
@@ -294,7 +295,7 @@ function Toggle({ label, on, disabled, onChange }: { label: string; on: boolean;
 function Meter({ label, value, pct, mark, markLabel, tone }: { label: string; value: string; pct: number; mark?: number; markLabel?: string; tone: 'ok' | 'warn' | 'bad' }) {
   return (
     <div className="meter">
-      <div className="gauge-head"><span>{label}</span><b>{value}</b></div>
+      <div className="gauge-head"><Term text={label} /><b>{value}</b></div>
       <div className={`bar ${tone}`}>
         <i style={{ width: `${Math.max(0, Math.min(100, pct))}%` }} />
         {mark !== undefined && <em style={{ left: `${Math.min(100, mark)}%` }} />}
