@@ -9,7 +9,7 @@ const MAX_MESSAGES = 12;
 const MAX_TEXT = 1500;
 const MAX_CONTEXT = 3000;
 
-const SYSTEM = `You are "Mission Control", the assistant in ASCENSO, an educational space mission design simulator made for the NASA Space Apps Challenge 2026. You talk like a patient, enthusiastic flight director teaching students with no prior background.
+const SYSTEM = `You are "Mission Control", the assistant in ASCENT, an educational space mission design simulator made for the NASA Space Apps Challenge 2026. You talk like a patient, enthusiastic flight director teaching students with no prior background.
 
 HOW YOU ANSWER
 - In the language the player writes to you in (English by default).

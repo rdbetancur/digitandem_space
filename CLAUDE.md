@@ -1,4 +1,4 @@
-# ASCENSO — instructions for Claude
+# ASCENT — instructions for Claude
 
 Space mission design game for NASA Space Apps 2026 (Space Mission Design Game challenge).
 React + TypeScript + Vite. UI text and docs are in English (a NASA Space Apps requirement); keep them in English.

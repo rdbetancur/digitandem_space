@@ -1,4 +1,4 @@
-# ASCENSO
+# ASCENT
 
 A space mission design game for the **Space Mission Design Game** challenge of the
 NASA Space Apps Challenge 2026. You design a craft, put it to the test, fly it to
@@ -25,6 +25,18 @@ orbit and do science. Every engineering decision has a visible physical conseque
 - **"Eye on Earth" challenge**: track a wildfire from orbit. Altitude decides how detailed
   the images are and how much link time you get to downlink them.
 - **"First CubeSat" challenge** with six objectives, and a **free play mode** with no budget or clock.
+- **Mission room (live multiplayer, 2 to 4 players)**: one player pilots and opens a room; the
+  others join from their own computers with a code or a link, as guests with no account. Each
+  takes a station and operates the same flight live: the navigator sets the attitude hold and
+  the time warp, the engineer deploys panels and watches loads and power, and the scientist runs
+  the instruments and the downlink. The simulation runs in the pilot's browser and guests connect
+  straight to it; if the room cannot connect, the game plays solo exactly as before.
+- **Share designs and flights by link**: the whole craft travels inside the URL, with your name,
+  your advice and what the design is good at. Whoever opens it lands in the Lab with that craft,
+  can compare it with their own, change it and send it back. No account or server.
+- **Flight board**: your flights on this device plus the flights teammates send you by link,
+  ranked by score, altitude, ascent efficiency, cost or time. It is stored in the browser, so it
+  is a board among people who trade links, not a global ranking.
 - **Causal report**: explains what happened using telemetry numbers and links to the science behind it.
 
 ## How to run it
