@@ -16,6 +16,7 @@ const SPEEDS = [
 ];
 
 const fmtDate = (ms: number) => new Date(ms).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+const fmtTime = (ms: number) => new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' });
 
 function duration(s: number): string {
   if (s < 120) return `${n(s, 1)} s`;
@@ -54,6 +55,9 @@ export default function Atlas({ design, onHome, onLab }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dateRef = useRef(Date.now());
   const speedRef = useRef(0);
+  // Live: the date follows the real clock, so the planets sit where they are right now.
+  const liveRef = useRef(true);
+  const [live, setLive] = useState(true);
   // focus: cuerpo al que la cámara vuela y sigue. home: la cámara vuelve a la vista general.
   // homeR: radio (UA) que debe caber en la vista general; 30,1 es todo el sistema.
   const view = useRef({ zoom: 0, panX: 0, panY: 0, focus: null as BodyId | null, home: false, homeR: 30.1 });
@@ -79,14 +83,20 @@ export default function Atlas({ design, onHome, onLab }: Props) {
   };
   const overview = () => { view.current.focus = null; view.current.home = true; view.current.homeR = 30.1; };
   const setScale = (v: boolean) => { visualRef.current = v; view.current = { zoom: 0, panX: 0, panY: 0, focus: null, home: false, homeR: 30.1 }; setVisual(v); };
-  const setRate = (i: number) => { clearTrip(); speedRef.current = SPEEDS[i].days; setSpeed(i); setDate(dateRef.current); };
-  const today = () => { clearTrip(); dateRef.current = Date.now(); setDate(dateRef.current); };
+  const stopLive = () => { liveRef.current = false; setLive(false); };
+  const setRate = (i: number) => { clearTrip(); stopLive(); speedRef.current = SPEEDS[i].days; setSpeed(i); setDate(dateRef.current); };
+  const today = () => { clearTrip(); stopLive(); dateRef.current = Date.now(); setDate(dateRef.current); };
+  const goLive = () => {
+    clearTrip(); speedRef.current = 0; setSpeed(0);
+    liveRef.current = true; setLive(true);
+    dateRef.current = Date.now(); setDate(dateRef.current);
+  };
   /** Sale en la próxima ventana: el tiempo corre solo hasta la salida y luego durante el viaje. */
   const launchTrip = () => {
     const j = planJourney(selRef.current, dateRef.current);
     if (!j) return;
     tripRef.current = { j, from: dateRef.current, arrived: false };
-    speedRef.current = 0; setSpeed(0);
+    speedRef.current = 0; setSpeed(0); stopLive();
     if (j.id === 'luna') { view.current.focus = 'luna'; view.current.home = false; return; }
     // Encuadra las dos órbitas del viaje: la de la Tierra y la del destino.
     view.current.focus = null; view.current.home = true;
@@ -302,10 +312,11 @@ export default function Atlas({ design, onHome, onLab }: Props) {
             view.current.focus = j.id; view.current.home = false;
           }
         }
-      } else if (speedRef.current > 0) dateRef.current += speedRef.current * DAY * dt;
+      } else if (liveRef.current) dateRef.current = Date.now();
+      else if (speedRef.current > 0) dateRef.current += speedRef.current * DAY * dt;
       if (view.current.zoom > 0) glide(dateRef.current, dt);
       draw(dateRef.current);
-      if (now - hudAt > 120 && (speedRef.current > 0 || trip)) {
+      if (now - hudAt > (liveRef.current ? 500 : 120) && (speedRef.current > 0 || trip || liveRef.current)) {
         hudAt = now;
         setDate(dateRef.current);
         if (trip) {
@@ -391,12 +402,15 @@ export default function Atlas({ design, onHome, onLab }: Props) {
 
       <div className="hud hud-top">
         <button className="btn ghost" onClick={onHome}>← Home</button>
-        <div className="clock">{fmtDate(date)}</div>
+        <div className="clock">{fmtDate(date)}{live && <span className="atlas-live-time"> · {fmtTime(date)} UTC</span>}</div>
         <div className="seg">
           {SPEEDS.map((s, i) => (
-            <button key={s.label} className={`btn tiny ${speed === i ? 'on' : ''}`} onClick={() => setRate(i)}>{s.label}</button>
+            <button key={s.label} className={`btn tiny ${speed === i && !live ? 'on' : ''}`} onClick={() => setRate(i)}>{s.label}</button>
           ))}
         </div>
+        <button className={`btn tiny atlas-live ${live ? 'on' : ''}`} onClick={goLive} aria-pressed={live} title="Show the planets where they are right now, following the real clock">
+          <i aria-hidden="true" />Live
+        </button>
         <button className="btn tiny" onClick={today}>Today</button>
         <button className="btn tiny" onClick={overview} title="Fly back to the whole solar system">Overview</button>
         <button className={`btn tiny ${visual ? '' : 'on'}`} onClick={() => setScale(!visual)} title="Switch between visual scale and physical scale">

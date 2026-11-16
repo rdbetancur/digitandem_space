@@ -348,3 +348,10 @@ select, input[type='text'], input:not([type]) {
 /* ---------- Clean view (U key in flight): only the craft and the world, for recording ---------- */
 .flight.clean > :not(canvas) { display: none !important; }
 body:has(.flight.clean) .mc-fab, body:has(.flight.clean) .room-pill { display: none !important; }
+
+/* ---------- Atlas: Live mode (planets follow the real clock) ---------- */
+.atlas-live i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #6b7a90; vertical-align: 1px; }
+.atlas-live.on i { background: #ff5a5a; box-shadow: 0 0 6px #ff5a5a; animation: atlas-live-pulse 1.6s ease-in-out infinite; }
+.atlas-live-time { color: var(--muted); font-weight: 500; }
+@keyframes atlas-live-pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .atlas-live.on i { animation: none; } }
