@@ -211,6 +211,10 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
     // Resolución adaptable: si el equipo no alcanza 30 cuadros por segundo, se dibuja con menos píxeles.
     let scale = Math.min(1.5, window.devicePixelRatio || 1);
     let slow = 0, frames = 0, acc = 0;
+    // Flight feel: the turn rate eases in and out (rotational inertia) instead of snapping, and the
+    // camera shakes a little with engine thrust and aerodynamic pressure. Neither changes the physics.
+    let rotS = 0;
+    const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     const resize = () => {
       canvas.width = Math.round(canvas.clientWidth * scale);
       canvas.height = Math.round(canvas.clientHeight * scale);
@@ -243,10 +247,13 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
         const up = k.has('w') || k.has('ArrowUp') || k.has('Shift');
         const dn = k.has('s') || k.has('ArrowDown') || k.has('Control');
         if (up || dn) { f.autopilot = false; setThrottle(f, f.throttle + (up ? 0.7 : -0.7) * real); }
-        let rot = 0;
-        if (k.has('a') || k.has('ArrowLeft')) rot -= 1;
-        if (k.has('d') || k.has('ArrowRight')) rot += 1;
-        if (rot !== 0) f.autopilot = false;
+        let want = 0;
+        if (k.has('a') || k.has('ArrowLeft')) want -= 1;
+        if (k.has('d') || k.has('ArrowRight')) want += 1;
+        if (want !== 0) f.autopilot = false;
+        rotS += (want - rotS) * (1 - Math.exp(-real / 0.22));
+        if (want === 0 && Math.abs(rotS) < 0.03) rotS = 0;
+        const rot = rotS;
         if (warpRef.current > maxWarp(f)) warpRef.current = maxWarp(f);
         const warp = warpRef.current;
         // El reloj de la misión no corre en la plataforma hasta que el jugador enciende.
@@ -307,7 +314,17 @@ export default function Flight({ design, mission, onEnd, onBack }: Props) {
       }
       const cam = camRef.current;
       updateCamera(cam, real, Math.atan2(f.r.y, f.r.x));
+      // Shake: strongest at liftoff and through max-Q, only when the camera is close to the craft.
+      let shake = 0;
+      if (!calm && !pausedRef.current && !f.ended && cam.zoom < 30) {
+        const alt0 = altitude(f);
+        const push = f.now.thrust > 0 ? Math.min(1, f.throttle) * Math.max(0, 1 - alt0 / 2000) : 0;
+        shake = Math.min(2.2, 1.4 * push + f.now.q / 20e3);
+      }
+      ctx.save();
+      if (shake > 0.05) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
       render(ctx, canvas.clientWidth, canvas.clientHeight, f, cam, time, particles.current, mission.target?.pos(f.t), cleanRef.current);
+      ctx.restore();
       if (now - hudAt > 90) { hudAt = now; setHud(snapshot(f, mission, warpRef.current)); }
       roomFlightTick(now);
       raf = requestAnimationFrame(frame);
