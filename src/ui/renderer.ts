@@ -1,4 +1,4 @@
-import { ATM_TOP, OMEGA, RE, SITE_ANGLE0, SUN_ANGLE } from '../sim/constants';
+import { ATM_TOP, MU, OMEGA, RE, SITE_ANGLE0, SUN_ANGLE } from '../sim/constants';
 import { MATERIALS } from '../sim/catalog';
 import {
   Flight, Vec, altitude, groundVelocity, linkStatus, orbitOf, payloadOnly, stationPositions,
@@ -79,8 +79,13 @@ export function render(
 
   // --- Órbita prevista (antes de la Tierra para que la tape) ---
   const o = orbitOf(f.r, f.v);
-  const showOrbit = !clean && !f.landed && zoom > 40 && Math.hypot(f.v.x, f.v.y) > 300;
-  if (showOrbit && o.p > 0) {
+  const showOrbit = !clean && !f.landed && !f.ended && zoom > 40 && Math.hypot(f.v.x, f.v.y) > 300;
+  // A path that comes back down is drawn relative to the ground (after the Earth), not as an ellipse.
+  const fall = showOrbit ? groundPath(f.r, f.v, o) : null;
+  // An ellipse that dips underground never gets drawn: either the ground path replaces it, or the
+  // craft is already touching down.
+  const sub = o.e < 1 && o.pe < RE;
+  if (showOrbit && o.p > 0 && !fall && !sub) {
     ctx.beginPath();
     let pen = false;
     const N = 240;
@@ -89,7 +94,7 @@ export function render(
       const den = 1 + o.e * Math.cos(nu);
       if (den <= 0.02) { pen = false; continue; }
       const rad = o.p / den;
-      if (rad > RE * 80) { pen = false; continue; }
+      if (rad > RE * 80 || rad < RE) { pen = false; continue; }
       const [x, y] = ws({ x: rad * Math.cos(o.argPe + nu), y: rad * Math.sin(o.argPe + nu) });
       if (pen) ctx.lineTo(x, y); else ctx.moveTo(x, y);
       pen = true;
@@ -302,39 +307,90 @@ export function render(
 
   // --- Marcadores de apoapsis y periapsis ---
   if (showOrbit && o.e < 1 && o.p > 0) {
-    // Path ahead of the craft, densely sampled and drawn over the Earth: on a low hop the whole
-    // arc above ground is too short for the full-orbit line above, which then hides underground.
-    // Before apoapsis it runs to the apoapsis; after it, down to the ground (or to periapsis).
-    {
-      ctx.beginPath();
-      pathAhead(f.r, f.v, o).forEach((pt, i) => {
-        const [x, y] = ws(pt);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
-      const stable = o.pe - RE > ATM_TOP;
-      ctx.strokeStyle = stable ? 'rgba(90,220,160,0.9)' : 'rgba(255,190,90,0.85)';
-      ctx.lineWidth = 1.8;
-      ctx.setLineDash(stable ? [] : [7, 6]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
     ctx.font = '600 12px ui-monospace, Menlo, monospace';
-    const mark = (rad: number, ang: number, label: string, color: string) => {
-      if (rad < RE) return;
-      const [x, y] = ws({ x: rad * Math.cos(ang), y: rad * Math.sin(ang) });
+    const label = (x: number, y: number, text: string, color: string) => {
       ctx.fillStyle = color;
       ctx.beginPath(); ctx.arc(x, y, 4.5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = 'rgba(3,5,11,0.75)';
-      const tw = ctx.measureText(label).width;
+      const tw = ctx.measureText(text).width;
       ctx.fillRect(x + 8, y - 9, tw + 8, 18);
       ctx.fillStyle = color;
-      ctx.fillText(label, x + 12, y + 4);
+      ctx.fillText(text, x + 12, y + 4);
     };
-    mark(o.ap, o.argPe + Math.PI, `Ap ${apsisAlt(o.ap - RE)}`, '#7fc8ff');
-    mark(o.pe, o.argPe, `Pe ${apsisAlt(o.pe - RE)}`, '#ffd27f');
+    if (fall) {
+      // Suborbital: the path from the craft to where it lands, relative to the ground, over the Earth.
+      ctx.beginPath();
+      fall.pts.forEach((pt, i) => {
+        const [x, y] = ws(pt);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = 'rgba(255,190,90,0.85)';
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([7, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (fall.apIdx !== null) {
+        const [x, y] = ws(fall.pts[fall.apIdx]);
+        label(x, y, `Ap ${apsisAlt(o.ap - RE)}`, '#7fc8ff');
+      }
+    }
+    const mark = (rad: number, ang: number, text: string, color: string) => {
+      if (fall || rad < RE) return;
+      const [x, y] = ws({ x: rad * Math.cos(ang), y: rad * Math.sin(ang) });
+      label(x, y, text, color);
+    };
+    if (!fall && !sub) {
+      mark(o.ap, o.argPe + Math.PI, `Ap ${apsisAlt(o.ap - RE)}`, '#7fc8ff');
+      mark(o.pe, o.argPe, `Pe ${apsisAlt(o.pe - RE)}`, '#ffd27f');
+    }
   }
 
   if (!clean) drawNavball(ctx, w, h, f);
+}
+
+/**
+ * Suborbital path ahead of the craft, from now until it reaches the ground, relative to the
+ * rotating Earth. Each point of the free-fall ellipse is turned back by the angle the Earth spins
+ * before the craft gets there (Kepler's equation gives that time), so a rocket fired straight up
+ * comes back down near its pad, as it really does. Gravity only, no drag. Returns null when the
+ * path never meets the ground (a real orbit) or is not an ellipse; those keep the inertial orbit.
+ * `apIdx` is the apoapsis point while it is still ahead.
+ */
+export function groundPath(
+  r: { x: number; y: number }, v: { x: number; y: number }, o: { p: number; e: number }, K = 200,
+): { pts: { x: number; y: number }[]; apIdx: number | null } | null {
+  const { p, e } = o;
+  if (!(p > 0) || !(e > 1e-9 && e < 1)) return null;
+  const cg = (p / RE - 1) / e; // cos of the true anomaly where the ellipse meets the ground
+  if (cg >= 1 || cg <= -1) return null;
+  const rm = Math.hypot(r.x, r.y);
+  const thC = Math.atan2(r.y, r.x);
+  const dir = r.x * v.y - r.y * v.x >= 0 ? 1 : -1;
+  const rising = r.x * v.x + r.y * v.y > 0;
+  const TAU = Math.PI * 2;
+  let nuC = Math.acos(Math.max(-1, Math.min(1, (p / rm - 1) / e)));
+  if (!rising) nuC = TAU - nuC;
+  const nuEnd = TAU - Math.acos(cg); // the descending crossing
+  if (!(nuEnd > nuC)) return null;
+  const a = p / (1 - e * e), n = Math.sqrt(MU / (a * a * a));
+  // Mean anomaly, continuous for true anomalies in (0, 2π).
+  const M = (nu: number) => {
+    const E = 2 * Math.atan2(Math.sqrt(1 - e) * Math.sin(nu / 2), Math.sqrt(1 + e) * Math.cos(nu / 2));
+    return E - e * Math.sin(E);
+  };
+  const M0 = M(nuC);
+  const pts: { x: number; y: number }[] = [];
+  let apIdx: number | null = null, best = -1;
+  for (let i = 0; i <= K; i++) {
+    const nu = nuC + ((nuEnd - nuC) * i) / K;
+    const rad = p / (1 + e * Math.cos(nu));
+    const t = (M(nu) - M0) / n;
+    // The Earth turns clockwise (see groundVelocity): undo the turn it makes before time t.
+    const th = thC + dir * (nu - nuC) + OMEGA * t;
+    pts.push({ x: rad * Math.cos(th), y: rad * Math.sin(th) });
+    if (rising && rad > best) { best = rad; apIdx = i; }
+  }
+  return { pts, apIdx: rising ? apIdx : null };
 }
 
 /**
